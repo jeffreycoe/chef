@@ -20,8 +20,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require "uri"
-require "net/http"
+require "uri" unless defined?(URI)
+require "net/http" unless defined?(Net::HTTP)
+require_relative "../dist"
 
 # To load faster, we only want ohai's version string.
 # However, in ohai before 0.6.0, the version is defined
@@ -29,10 +30,10 @@ require "net/http"
 begin
   require "ohai/version" # used in user agent string.
 rescue LoadError
-  require "ohai"
+  require "ohai" unless defined?(Ohai::System)
 end
 
-require "chef/version"
+require_relative "../version"
 
 class Chef
   class HTTP
@@ -40,7 +41,7 @@ class Chef
 
       engine = defined?(RUBY_ENGINE) ? RUBY_ENGINE : "ruby"
 
-      UA_COMMON = "/#{::Chef::VERSION} (#{engine}-#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}; ohai-#{Ohai::VERSION}; #{RUBY_PLATFORM}; +https://chef.io)".freeze
+      UA_COMMON = "/#{::Chef::VERSION} (#{engine}-#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}; ohai-#{Ohai::VERSION}; #{RUBY_PLATFORM}; +#{Chef::Dist::WEBSITE})".freeze
       DEFAULT_UA = "Chef Client" << UA_COMMON
 
       USER_AGENT = "User-Agent".freeze

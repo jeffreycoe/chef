@@ -16,14 +16,14 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
     class UserReregister < Knife
 
       deps do
-        require "chef/user_v1"
+        require_relative "../user_v1"
       end
 
       banner "knife user reregister USER (options)"
@@ -31,7 +31,7 @@ class Chef
       option :file,
         short: "-f FILE",
         long: "--file FILE",
-        description: "Write the private key to a file"
+        description: "Write the private key to a file."
 
       def run
         @user_name = @name_args[0]

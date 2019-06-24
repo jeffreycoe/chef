@@ -15,9 +15,9 @@
 # limitations under the License.
 #
 
-require "chef/provider/package"
-require "chef/resource/chocolatey_package"
-require "chef/mixin/powershell_out"
+require_relative "../package"
+require_relative "../../resource/chocolatey_package"
+require_relative "../../mixin/powershell_out"
 
 class Chef
   class Provider
@@ -236,6 +236,8 @@ class Chef
               begin
                 cmd = [ "list -r #{pkg}" ]
                 cmd.push( "-source #{new_resource.source}" ) if new_resource.source
+                cmd.push( new_resource.options ) if new_resource.options
+
                 raw = parse_list_output(*cmd)
                 raw.keys.each_with_object({}) do |name, available|
                   available[name] = desired_name_versions[name] || raw[name]

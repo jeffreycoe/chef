@@ -27,6 +27,7 @@ describe Chef::Application::Solo do
     allow(app).to receive(:configure_chef).and_return(true)
     allow(app).to receive(:configure_logging).and_return(true)
     allow(app).to receive(:trap)
+    allow(app).to receive(:cli_arguments).and_return([])
 
     Chef::Config[:json_attribs] = false
     Chef::Config[:solo] = true
@@ -49,11 +50,6 @@ describe Chef::Application::Solo do
         expect(Chef::Config[:solo]).to be_truthy
       end
 
-      it "should set audit-mode to :disabled" do
-        app.reconfigure
-        expect(Chef::Config[:audit_mode]).to be :disabled
-      end
-
       describe "when configured to not fork the client process" do
         before do
           Chef::Config[:client_fork] = false
@@ -69,10 +65,10 @@ describe Chef::Application::Solo do
 
           it "should terminate with message" do
             expect(Chef::Application).to receive(:fatal!).with(
-              "Unforked chef-client interval runs are disabled in Chef 12.
+              /Unforked .* interval runs are disabled by default\.
 Configuration settings:
   interval  = 600 seconds
-Enable chef-client interval runs by setting `:client_fork = true` in your config file or adding `--fork` to your command line options."
+Enable .* interval runs by setting `:client_fork = true` in your config file or adding `--fork` to your command line options\./
             )
             app.reconfigure
           end

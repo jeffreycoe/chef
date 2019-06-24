@@ -17,15 +17,14 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
+require_relative "../dist"
 
 class Chef
   class Resource
     class Execute < Chef::Resource
       resource_name :execute
-      provides :execute
-
-      identity_attr :command
+      provides :execute, target_mode: true
 
       description "Use the execute resource to execute a single command. Commands that"\
                   " are executed with this resource are (by their nature) not idempotent,"\
@@ -48,13 +47,10 @@ class Chef
         @is_guard_interpreter = false
       end
 
-      def command(arg = nil)
-        set_or_return(
-          :command,
-          arg,
-          kind_of: [ String, Array ]
-        )
-      end
+      property :command, [ String, Array ],
+               name_property: true, identity: true,
+               description: "An optional property to set the command to be executed if it differs from the resource block's name."
+
       property :umask, [ String, Integer ],
                description: "The file mode creation mask, or umask."
 
@@ -67,13 +63,11 @@ class Chef
       property :environment, Hash,
                description: "A Hash of environment variables in the form of ({'ENV_VARIABLE' => 'VALUE'})."
 
-      alias :env :environment
-
       property :group, [ String, Integer ],
                description: "The group name or group ID that must be changed before running a command."
 
       property :live_stream, [ TrueClass, FalseClass ], default: false,
-               description: "Send the output of the command run by this execute resource block to the chef-client event stream."
+               description: "Send the output of the command run by this execute resource block to the #{Chef::Dist::CLIENT} event stream."
 
       # default_env defaults to `false` so that the command execution more exactly matches what the user gets on the command line without magic
       property :default_env, [ TrueClass, FalseClass ], desired_state: false, default: false,
@@ -91,7 +85,7 @@ class Chef
 
       property :domain, String,
                introduced: "12.21",
-               description: "Windows only: The domain of the user user specified by the user property. If not specified, the user name and password specified by the user and password properties will be used to resolve that user against the domain in which the system running Chef client is joined, or if that system is not joined to a domain it will resolve the user as a local account on that system. An alternative way to specify the domain is to leave this property unspecified and specify the domain as part of the user property."
+               description: "Windows only: The domain of the user user specified by the user property. If not specified, the user name and password specified by the user and password properties will be used to resolve that user against the domain in which the system running #{Chef::Dist::PRODUCT} is joined, or if that system is not joined to a domain it will resolve the user as a local account on that system. An alternative way to specify the domain is to leave this property unspecified and specify the domain as part of the user property."
 
       property :password, String, sensitive: true,
                introduced: "12.21",
@@ -99,12 +93,14 @@ class Chef
 
       # lazy used to set default value of sensitive to true if password is set
       property :sensitive, [ TrueClass, FalseClass ],
-               description: "Ensure that sensitive resource data is not logged by the chef-client.",
+               description: "Ensure that sensitive resource data is not logged by the #{Chef::Dist::CLIENT}.",
                default: lazy { |r| r.password ? true : false }, default_description: "True if the password property is set. False otherwise."
 
       property :elevated, [ TrueClass, FalseClass ], default: false,
-               description: "Determines whether the script will run with elevated permissions to circumvent User Access Control (UAC) interactively blocking the process.\nThis will cause the process to be run under a batch login instead of an interactive login. The user running Chef needs the “Replace a process level token” and “Adjust Memory Quotas for a process” permissions. The user that is running the command needs the “Log on as a batch job” permission.\nBecause this requires a login, the user and password properties are required.",
+               description: "Determines whether the script will run with elevated permissions to circumvent User Access Control (UAC) interactively blocking the process.\nThis will cause the process to be run under a batch login instead of an interactive login. The user running #{Chef::Dist::CLIENT} needs the “Replace a process level token” and “Adjust Memory Quotas for a process” permissions. The user that is running the command needs the “Log on as a batch job” permission.\nBecause this requires a login, the user and password properties are required.",
                introduced: "13.3"
+
+      alias :env :environment
 
       def self.set_guard_inherited_attributes(*inherited_attributes)
         @class_inherited_attributes = inherited_attributes
@@ -122,6 +118,9 @@ class Chef
         ancestor_attributes.concat(@class_inherited_attributes ? @class_inherited_attributes : []).uniq
       end
 
+      # post resource creation validation
+      #
+      # @return [void]
       def after_created
         validate_identity_platform(user, password, domain, elevated)
         identity = qualify_user(user, password, domain)

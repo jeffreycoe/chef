@@ -1,5 +1,5 @@
 
-require "chef/exceptions"
+require_relative "exceptions"
 
 class Chef
   class Whitelist
@@ -45,7 +45,7 @@ class Chef
       all_data = data
       filtered_data = new_data
       parts[0..-2].each do |part|
-        unless all_data[part]
+        unless all_data.key?(part)
           Chef::Log.warn("Could not find whitelist attribute #{item}.")
           return nil
         end

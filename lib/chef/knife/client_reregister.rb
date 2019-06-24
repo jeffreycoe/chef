@@ -16,14 +16,14 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
     class ClientReregister < Knife
 
       deps do
-        require "chef/api_client_v1"
+        require_relative "../api_client_v1"
       end
 
       banner "knife client reregister CLIENT (options)"
@@ -31,7 +31,7 @@ class Chef
       option :file,
         short: "-f FILE",
         long: "--file FILE",
-        description: "Write the key to a file"
+        description: "Write the key to a file."
 
       def run
         @client_name = @name_args[0]

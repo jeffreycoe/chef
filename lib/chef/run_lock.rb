@@ -15,14 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "chef/mixin/create_path"
+require_relative "mixin/create_path"
 require "fcntl"
 if Chef::Platform.windows?
-  require "chef/win32/mutex"
+  require_relative "win32/mutex"
 end
-require "chef/config"
-require "chef/exceptions"
-require "timeout"
+require_relative "config"
+require_relative "exceptions"
+require "timeout" unless defined?(Timeout)
+require_relative "dist"
 
 class Chef
 
@@ -95,7 +96,7 @@ class Chef
     # Waits until acquiring the system-wide lock.
     #
     def wait
-      Chef::Log.warn("Chef client #{runpid} is running, will wait for it to finish and then run.")
+      Chef::Log.warn("#{Chef::Dist::PRODUCT} #{runpid} is running, will wait for it to finish and then run.")
       if Chef::Platform.windows?
         mutex.wait
       else

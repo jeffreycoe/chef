@@ -17,20 +17,21 @@
 # limitations under the License.
 #
 
-require "chef/config"
-require "chef/log"
-require "chef/resource/file"
-require "chef/provider"
-require "etc"
-require "fileutils"
-require "chef/scan_access_control"
-require "chef/mixin/checksum"
-require "chef/mixin/file_class"
-require "chef/mixin/enforce_ownership_and_permissions"
-require "chef/util/backup"
-require "chef/util/diff"
-require "chef/util/selinux"
-require "chef/file_content_management/deploy"
+require_relative "../config"
+require_relative "../log"
+require_relative "../resource/file"
+require_relative "../provider"
+require "etc" unless defined?(Etc)
+require "fileutils" unless defined?(FileUtils)
+require_relative "../scan_access_control"
+require_relative "../mixin/checksum"
+require_relative "../mixin/file_class"
+require_relative "../mixin/enforce_ownership_and_permissions"
+require_relative "../util/backup"
+require_relative "../util/diff"
+require_relative "../util/selinux"
+require_relative "../file_content_management/deploy"
+require_relative "../dist"
 
 # The Tao of File Providers:
 #  - the content provider must always return a tempfile that we can delete/mv
@@ -227,9 +228,9 @@ class Chef
         elsif file_class.symlink?(path) && new_resource.manage_symlink_source
           verify_symlink_sanity(path)
         elsif file_class.symlink?(new_resource.path) && new_resource.manage_symlink_source.nil?
-          logger.warn("File #{path} managed by #{new_resource} is really a symlink. Managing the source file instead.")
+          logger.warn("File #{path} managed by #{new_resource} is really a symlink (to #{file_class.realpath(new_resource.path)}). Managing the source file instead.")
           logger.warn("Disable this warning by setting `manage_symlink_source true` on the resource")
-          logger.warn("In a future Chef release, 'manage_symlink_source' will not be enabled by default")
+          logger.warn("In a future release, 'manage_symlink_source' will not be enabled by default")
           verify_symlink_sanity(path)
         elsif new_resource.force_unlink
           [nil, nil, nil]
@@ -389,7 +390,7 @@ class Chef
         return if tempfile.nil?
         # but a tempfile that has no path or doesn't exist should not happen
         if tempfile.path.nil? || !::File.exists?(tempfile.path)
-          raise "chef-client is confused, trying to deploy a file that has no path or does not exist..."
+          raise "#{Chef::Dist::CLIENT} is confused, trying to deploy a file that has no path or does not exist..."
         end
 
         # the file? on the next line suppresses the case in why-run when we have a not-file here that would have otherwise been removed

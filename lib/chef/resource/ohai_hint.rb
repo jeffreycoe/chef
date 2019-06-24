@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
@@ -84,6 +84,8 @@ class Chef
       end
 
       # this resource forces itself to run at compile_time
+      #
+      # @return [void]
       def after_created
         return unless compile_time
         Array(action).each do |action|

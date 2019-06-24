@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 
-require "chef/log"
-require "chef/provider"
-require "forwardable"
+require_relative "../log"
+require_relative "../provider"
+require "forwardable" unless defined?(Forwardable)
 
 class Chef
   class Provider
     class Execute < Chef::Provider
       extend Forwardable
 
-      provides :execute
+      provides :execute, target_mode: true
 
       def_delegators :new_resource, :command, :returns, :environment, :user, :domain, :password, :group, :cwd, :umask, :creates, :elevated, :default_env
 

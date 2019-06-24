@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 
-require "chef/exceptions"
-require "chef/win32/api"
-require "chef/win32/error"
-require "pathname"
+require_relative "../../exceptions"
+require_relative "../api"
+require_relative "../error"
+require "pathname" unless defined?(Pathname)
 
 class Chef
   module ReservedNames::Win32

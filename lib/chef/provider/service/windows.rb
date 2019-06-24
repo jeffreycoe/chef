@@ -18,10 +18,10 @@
 # limitations under the License.
 #
 
-require "chef/provider/service/simple"
-require "chef/win32_service_constants"
+require_relative "simple"
+require_relative "../../win32_service_constants"
 if RUBY_PLATFORM =~ /mswin|mingw32|windows/
-  require "chef/win32/error"
+  require_relative "../../win32/error"
   require "win32/service"
 end
 
@@ -83,22 +83,7 @@ class Chef::Provider::Service::Windows < Chef::Provider::Service
 
   def start_service
     if Win32::Service.exists?(@new_resource.service_name)
-      # reconfiguration is idempotent, so just do it.
-      new_config = {
-        service_name: @new_resource.service_name,
-        service_start_name: @new_resource.run_as_user,
-        password: @new_resource.run_as_password,
-      }.reject { |k, v| v.nil? || v.length == 0 }
-
-      Win32::Service.configure(new_config)
-      logger.info "#{@new_resource} configured."
-
-      # LocalSystem is the default runas user, which is a special service account that should ultimately have the rights of BUILTIN\Administrators, but we wouldn't see that from get_account_right
-      if new_config.key?(:service_start_name) && new_config[:service_start_name].casecmp("localsystem") != 0
-        unless Chef::ReservedNames::Win32::Security.get_account_right(canonicalize_username(new_config[:service_start_name])).include?(SERVICE_RIGHT)
-          grant_service_logon(new_config[:service_start_name])
-        end
-      end
+      configure_service_run_as_properties
 
       state = current_state
       if state == RUNNING
@@ -223,11 +208,6 @@ class Chef::Provider::Service::Windows < Chef::Provider::Service
       return
     end
 
-    # Until #6300 is solved this is required
-    if new_resource.run_as_user == new_resource.class.properties[:run_as_user].default
-      new_resource.run_as_user = new_resource.class.properties[:run_as_user].default
-    end
-
     converge_if_changed :service_type, :startup_type, :error_control,
                         :binary_path_name, :load_order_group, :dependencies,
                         :run_as_user, :display_name, :description do
@@ -281,15 +261,39 @@ class Chef::Provider::Service::Windows < Chef::Provider::Service
 
   private
 
+  def configure_service_run_as_properties
+    return unless new_resource.property_is_set?(:run_as_user)
+
+    new_config = {
+      service_name: new_resource.service_name,
+      service_start_name: new_resource.run_as_user,
+      password: new_resource.run_as_password,
+    }.reject { |k, v| v.nil? || v.length == 0 }
+
+    Win32::Service.configure(new_config)
+    logger.info "#{new_resource} configured."
+
+    grant_service_logon(new_resource.run_as_user) if new_resource.run_as_user.casecmp("localsystem") != 0
+  end
+
+  #
+  # Queries the delayed auto-start setting of the auto-start service. If
+  # the service is not auto-start, this will return nil.
+  #
+  # @return [Boolean, nil]
+  #
   def current_delayed_start
-    if service = Win32::Service.services.find { |x| x.service_name == new_resource.service_name }
-      service.delayed_start == 0 ? false : true
-    else
-      nil
+    case Win32::Service.delayed_start(new_resource.service_name)
+    when 0
+      false
+    when 1
+      true
     end
   end
 
   def grant_service_logon(username)
+    return if Chef::ReservedNames::Win32::Security.get_account_right(canonicalize_username(username)).include?(SERVICE_RIGHT)
+
     begin
       Chef::ReservedNames::Win32::Security.add_account_right(canonicalize_username(username), SERVICE_RIGHT)
     rescue Chef::Exceptions::Win32APIError => err
@@ -391,16 +395,11 @@ class Chef::Provider::Service::Windows < Chef::Provider::Service
   end
 
   def converge_delayed_start
-    config = {}
-    config[:service_name]  = new_resource.service_name
-    config[:delayed_start] = new_resource.delayed_start ? 1 : 0
-
-    # Until #6300 is solved this is required
-    if new_resource.delayed_start == new_resource.class.properties[:delayed_start].default
-      new_resource.delayed_start = new_resource.class.properties[:delayed_start].default
-    end
-
     converge_if_changed :delayed_start do
+      config = {}
+      config[:service_name]  = new_resource.service_name
+      config[:delayed_start] = new_resource.delayed_start ? 1 : 0
+
       Win32::Service.configure(config)
     end
   end

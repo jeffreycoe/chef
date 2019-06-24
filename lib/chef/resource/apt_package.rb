@@ -16,13 +16,14 @@
 # limitations under the License.
 #
 
-require "chef/resource/package"
+require_relative "package"
 
 class Chef
   class Resource
     class AptPackage < Chef::Resource::Package
       resource_name :apt_package
-      provides :package, platform_family: "debian"
+      provides :apt_package, target_mode: true
+      provides :package, platform_family: "debian", target_mode: true
 
       description "Use the apt_package resource to manage packages on Debian and Ubuntu platforms."
 
@@ -34,6 +35,14 @@ class Chef
                introduced: "14.0",
                description: "Overwrite existing configuration files with those supplied by the package, if prompted by APT.",
                default: false
+
+      property :response_file, String,
+               description: "The direct path to the file used to pre-seed a package.",
+               desired_state: false
+
+      property :response_file_variables, Hash,
+               description: "A Hash of response file variables in the form of {'VARIABLE' => 'VALUE'}.",
+               default: lazy { Hash.new }, desired_state: false
 
     end
   end

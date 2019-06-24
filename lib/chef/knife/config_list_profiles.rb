@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/workstation_config_loader"
+require_relative "../knife"
+require_relative "../workstation_config_loader"
 
 class Chef
   class Knife
@@ -26,7 +26,7 @@ class Chef
       option :ignore_knife_rb,
              short: "-i",
              long: "--ignore-knife-rb",
-             description: "Ignore the current knife.rb configuration.",
+             description: "Ignore the current config.rb/knife.rb configuration.",
              default: false
 
       def run

@@ -16,15 +16,15 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
     class NodeList < Knife
 
       deps do
-        require "chef/node"
-        require "chef/json_compat"
+        require_relative "../node"
+        require_relative "../json_compat"
       end
 
       banner "knife node list (options)"
@@ -32,7 +32,7 @@ class Chef
       option :with_uri,
         short: "-w",
         long: "--with-uri",
-        description: "Show corresponding URIs"
+        description: "Show corresponding URIs."
 
       def run
         env = Chef::Config[:environment]

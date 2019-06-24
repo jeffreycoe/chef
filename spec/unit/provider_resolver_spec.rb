@@ -670,14 +670,10 @@ describe Chef::ProviderResolver do
                 group: [ Chef::Resource::Group, Chef::Provider::Group::Suse ],
               },
             },
-            "opensuse" => {
-    #          service: [ Chef::Resource::RedhatService, Chef::Provider::Service::Redhat ],
-              package: [ Chef::Resource::ZypperPackage, Chef::Provider::Package::Zypper ],
-              group: [ Chef::Resource::Group, Chef::Provider::Group::Usermod ],
-              "12.3" => {
-              },
-              "12.2" => {
-                group: [ Chef::Resource::Group, Chef::Provider::Group::Suse ],
+            "opensuseleap" => {
+              %w{42.3} => {
+                package: [ Chef::Resource::ZypperPackage, Chef::Provider::Package::Zypper ],
+                group: [ Chef::Resource::Group, Chef::Provider::Group::Gpasswd ],
               },
             },
           },
@@ -790,16 +786,6 @@ describe Chef::ProviderResolver do
           },
         },
 
-        "hpux" => {
-          "hpux" => {
-            "hpux" => {
-              "3.1.4" => {
-                group: [ Chef::Resource::Group, Chef::Provider::Group::Usermod ],
-              },
-            },
-          },
-        },
-
         "netbsd" => {
           "netbsd" => {
             "netbsd" => {
@@ -861,21 +847,11 @@ describe Chef::ProviderResolver do
               user: [ Chef::Resource::User::SolarisUser, Chef::Provider::User::Solaris ],
               "5.11" => {
                 package: [ Chef::Resource::IpsPackage, Chef::Provider::Package::Ips ],
-              },
-              "5.9" => {
+                group: [ Chef::Resource::Group, Chef::Provider::Group::Solaris ],
               },
             },
           },
 
-        },
-
-        "solaris" => {
-          "solaris" => {
-            "solaris" => {
-              "3.1.4" => {
-              },
-            },
-          },
         },
 
         "exherbo" => {

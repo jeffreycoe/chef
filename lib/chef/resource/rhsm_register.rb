@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 
-require "chef/resource"
-require "shellwords"
+require_relative "../resource"
+require "shellwords" unless defined?(Shellwords)
 
 class Chef
   class Resource

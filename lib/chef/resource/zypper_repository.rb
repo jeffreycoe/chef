@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
@@ -30,7 +30,7 @@ class Chef
 
       property :repo_name, String,
                regex: [/^[^\/]+$/],
-               description: "Specifies the repository name, if it differs from the resource name.",
+               description: "An optional property to set the repository name if it differs from the resource block's name.",
                validation_message: "repo_name property cannot contain a forward slash '/'",
                name_property: true
 

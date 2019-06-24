@@ -16,15 +16,16 @@
 # limitations under the License.
 #
 
-require "tempfile"
-require "chef/recipe"
-require "fileutils"
-require "chef/dsl/platform_introspection"
-require "chef/version"
-require "chef/shell/shell_session"
-require "chef/shell/model_wrapper"
-require "chef/server_api"
-require "chef/json_compat"
+require "tempfile" unless defined?(Tempfile)
+require_relative "../recipe"
+require "fileutils" unless defined?(FileUtils)
+require_relative "../dsl/platform_introspection"
+require_relative "../version"
+require_relative "shell_session"
+require_relative "model_wrapper"
+require_relative "../server_api"
+require_relative "../json_compat"
+require_relative "../dist"
 
 module Shell
   module Extensions
@@ -68,7 +69,7 @@ module Shell
       def help_banner
         banner = []
         banner << ""
-        banner << "chef-shell Help"
+        banner << "#{Chef::Dist::SHELL} Help"
         banner << "".ljust(80, "=")
         banner << "| " + "Command".ljust(25) + "| " + "Description"
         banner << "".ljust(80, "=")
@@ -193,7 +194,7 @@ module Shell
       explain(<<~E)
         ## SUMMARY ##
           When called with no argument, +help+ prints a table of all
-          chef-shell commands. When called with an argument COMMAND, +help+
+          #{Chef::Dist::SHELL} commands. When called with an argument COMMAND, +help+
           prints a detailed explanation of the command if available, or the
           description if no explanation is available.
       E
@@ -209,7 +210,7 @@ module Shell
 
       desc "prints information about chef"
       def version
-        puts "This is the chef-shell.\n" +
+        puts "This is the #{Chef::Dist::SHELL}.\n" +
           " Chef Version: #{::Chef::VERSION}\n" +
           " https://www.chef.io/\n" +
           " https://docs.chef.io/"
@@ -229,7 +230,7 @@ module Shell
         :attributes
       end
 
-      desc "run chef using the current recipe"
+      desc "run #{Chef::Dist::PRODUCT} using the current recipe"
       def run_chef
         Chef::Log.level = :debug
         session = Shell.session
@@ -238,8 +239,8 @@ module Shell
         runrun
       end
 
-      desc "returns an object to control a paused chef run"
-      subcommands resume: "resume the chef run",
+      desc "returns an object to control a paused #{Chef::Dist::PRODUCT} run"
+      subcommands resume: "resume the #{Chef::Dist::PRODUCT} run",
                   step: "run only the next resource",
                   skip_back: "move back in the run list",
                   skip_forward: "move forward in the run list"
@@ -310,9 +311,9 @@ module Shell
               new_node = edit(existing_node)
 
         ## EDITOR SELECTION ##
-          chef-shell looks for an editor using the following logic
+          #{Chef::Dist::SHELL} looks for an editor using the following logic
           1. Looks for an EDITOR set by Shell.editor = "EDITOR"
-          2. Looks for an EDITOR configured in your chef-shell config file
+          2. Looks for an EDITOR configured in your #{Chef::Dist::SHELL} config file
           3. Uses the value of the EDITOR environment variable
       E
       def edit(object)
@@ -321,7 +322,7 @@ module Shell
           return :failburger
         end
 
-        filename = "chef-shell-edit-#{object.class.name}-"
+        filename = "#{Chef::Dist::SHELL}-edit-#{object.class.name}-"
         if object.respond_to?(:name)
           filename += object.name
         elsif object.respond_to?(:id)

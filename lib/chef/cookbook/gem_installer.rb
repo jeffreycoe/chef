@@ -1,4 +1,3 @@
-#--
 # Copyright:: Copyright (c) 2010-2018, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
@@ -15,8 +14,8 @@
 # limitations under the License.
 #
 
-require "tmpdir"
-require "chef/mixin/shell_out"
+require "tmpdir" unless defined?(Dir.mktmpdir)
+require_relative "../mixin/shell_out"
 
 class Chef
   class Cookbook

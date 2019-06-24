@@ -17,7 +17,7 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
@@ -28,7 +28,7 @@ class Chef
       option :with_uri,
         short: "-w",
         long: "--with-uri",
-        description: "Show corresponding URIs"
+        description: "Show corresponding URIs."
 
       option :all_versions,
         short: "-a",

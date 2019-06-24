@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-require "chef/chef_fs/knife"
+require_relative "../chef_fs/knife"
 
 class Chef
   class Knife
@@ -24,15 +24,15 @@ class Chef
       category "path-based"
 
       deps do
-        require "chef/chef_fs/file_system"
-        require "chef/chef_fs/file_system/exceptions"
+        require_relative "../chef_fs/file_system"
+        require_relative "../chef_fs/file_system/exceptions"
       end
 
       # TODO modify to remote-only / local-only pattern (more like delete)
       option :local,
         long: "--local",
         boolean: true,
-        description: "Xargs local files instead of remote"
+        description: "Xargs local files instead of remote."
 
       option :patterns,
         long: "--pattern [PATTERN]",

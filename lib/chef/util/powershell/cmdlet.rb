@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-require "mixlib/shellout"
-require "chef/mixin/windows_architecture_helper"
-require "chef/util/powershell/cmdlet_result"
+require "mixlib/shellout" unless defined?(Mixlib::ShellOut::DEFAULT_READ_TIMEOUT)
+require_relative "../../mixin/windows_architecture_helper"
+require_relative "cmdlet_result"
 
 class Chef
   class Util

@@ -1,6 +1,6 @@
 #
 # Author:: AJ Christensen (<aj@chef.io>)
-# Copyright:: Copyright 2008-2016, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,15 +16,14 @@
 # limitations under the License.
 #
 
-require "chef/provider/group/groupadd"
+require_relative "groupadd"
 
 class Chef
   class Provider
     class Group
       class Usermod < Chef::Provider::Group::Groupadd
 
-        provides :group, os: %w{openbsd solaris2 hpux}
-        provides :group, platform: "opensuse"
+        provides :group, os: %w{openbsd solaris2}
 
         def load_current_resource
           super
@@ -77,10 +76,8 @@ class Chef
 
         def append_flags
           case node[:platform]
-          when "openbsd", "netbsd", "aix", "solaris2", "smartos", "omnios"
+          when "openbsd", "netbsd", "aix", "smartos", "omnios"
             "-G"
-          when "solaris", "suse", "opensuse"
-            [ "-a", "-G" ]
           end
         end
 

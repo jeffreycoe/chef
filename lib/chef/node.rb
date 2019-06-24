@@ -2,7 +2,7 @@
 # Author:: Christopher Brown (<cb@chef.io>)
 # Author:: Christopher Walters (<cw@chef.io>)
 # Author:: Tim Hinderliter (<tim@chef.io>)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +18,24 @@
 # limitations under the License.
 #
 
-require "forwardable"
-require "chef/config"
-require "chef/nil_argument"
-require "chef/mixin/params_validate"
-require "chef/mixin/from_file"
-require "chef/mixin/deep_merge"
-require "chef/dsl/include_attribute"
-require "chef/dsl/universal"
-require "chef/environment"
-require "chef/server_api"
-require "chef/run_list"
-require "chef/node/attribute"
-require "chef/mash"
-require "chef/json_compat"
-require "chef/search/query"
-require "chef/whitelist"
-require "chef/blacklist"
+require "forwardable" unless defined?(Forwardable)
+require "securerandom" unless defined?(SecureRandom)
+require_relative "config"
+require_relative "nil_argument"
+require_relative "mixin/params_validate"
+require_relative "mixin/from_file"
+require_relative "mixin/deep_merge"
+require_relative "dsl/include_attribute"
+require_relative "dsl/universal"
+require_relative "environment"
+require_relative "server_api"
+require_relative "run_list"
+require_relative "node/attribute"
+require_relative "mash"
+require_relative "json_compat"
+require_relative "search/query"
+require_relative "whitelist"
+require_relative "blacklist"
 
 class Chef
   class Node
@@ -299,13 +300,37 @@ class Chef
       @primary_runlist
     end
 
-    attr_writer :override_runlist
+    # This boolean can be useful to determine if an override_runlist is set, it can be true
+    # even if the override_runlist is empty.
+    #
+    # (Mutators can set the override_runlist so any non-empty override_runlist is considered set)
+    #
+    # @return [Boolean] if the override run list has been set
+    def override_runlist_set?
+      !!@override_runlist_set || !override_runlist.empty?
+    end
+
+    # Accessor for override_runlist (this cannot set an empty override run list)
+    #
+    # @params args [Array] override run list to set
+    # @return [Chef::RunList] the override run list
     def override_runlist(*args)
-      args.length > 0 ? @override_runlist.reset!(args) : @override_runlist
+      return @override_runlist if args.length == 0
+      @override_runlist_set = true
+      @override_runlist.reset!(args)
+    end
+
+    # Setter for override_runlist which allows setting an empty override run list and marking it to be used
+    #
+    # @params array [Array] override run list to set
+    # @return [Chef::RunList] the override run list
+    def override_runlist=(array)
+      @override_runlist_set = true
+      @override_runlist.reset!(array)
     end
 
     def select_run_list
-      @override_runlist.empty? ? @primary_runlist : @override_runlist
+      override_runlist_set? ? @override_runlist : @primary_runlist
     end
 
     # Returns an Array of roles and recipes, in the order they will be applied.
@@ -338,7 +363,7 @@ class Chef
       logger.debug("Platform is #{platform} version #{version}")
       automatic[:platform] = platform
       automatic[:platform_version] = version
-      automatic[:chef_guid] = Chef::Config[:chef_guid]
+      automatic[:chef_guid] = Chef::Config[:chef_guid] || ( Chef::Config[:chef_guid] = node_uuid )
       automatic[:name] = name
       automatic[:chef_environment] = chef_environment
     end
@@ -455,13 +480,10 @@ class Chef
 
     # Transform the node to a Hash
     def to_hash
-      index_hash = Hash.new
+      index_hash = attributes.to_hash
       index_hash["chef_type"] = "node"
       index_hash["name"] = name
       index_hash["chef_environment"] = chef_environment
-      attribute.each do |key, value|
-        index_hash[key] = value
-      end
       index_hash["recipe"] = run_list.recipe_names if run_list.recipe_names.length > 0
       index_hash["role"] = run_list.role_names if run_list.role_names.length > 0
       index_hash["run_list"] = run_list.run_list_items
@@ -472,10 +494,10 @@ class Chef
       display = {}
       display["name"]             = name
       display["chef_environment"] = chef_environment
-      display["automatic"]        = automatic_attrs
-      display["normal"]           = normal_attrs
-      display["default"]          = attributes.combined_default
-      display["override"]         = attributes.combined_override
+      display["automatic"]        = attributes.automatic.to_hash
+      display["normal"]           = attributes.normal.to_hash
+      display["default"]          = attributes.combined_default.to_hash
+      display["override"]         = attributes.combined_override.to_hash
       display["run_list"]         = run_list.run_list_items
       display
     end
@@ -490,11 +512,11 @@ class Chef
         "name" => name,
         "chef_environment" => chef_environment,
         "json_class" => self.class.name,
-        "automatic" => attributes.automatic,
-        "normal" => attributes.normal,
+        "automatic" => attributes.automatic.to_hash,
+        "normal" => attributes.normal.to_hash,
         "chef_type" => "node",
-        "default" => attributes.combined_default,
-        "override" => attributes.combined_override,
+        "default" => attributes.combined_default.to_hash,
+        "override" => attributes.combined_override.to_hash,
         # Render correctly for run_list items so malformed json does not result
         "run_list" => @primary_runlist.run_list.map { |item| item.to_s },
       }
@@ -685,6 +707,25 @@ class Chef
         end
       end
       data
+    end
+
+    # Returns a UUID that uniquely identifies this node for reporting reasons.
+    #
+    # The node is read in from disk if it exists, or it's generated if it does
+    # does not exist.
+    #
+    # @return [String] UUID for the node
+    #
+    def node_uuid
+      path = File.expand_path(Chef::Config[:chef_guid_path])
+      dir = File.dirname(path)
+
+      unless File.exists?(path)
+        FileUtils.mkdir_p(dir)
+        File.write(path, SecureRandom.uuid)
+      end
+
+      File.open(path).first.chomp
     end
 
   end

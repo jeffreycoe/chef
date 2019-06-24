@@ -16,15 +16,15 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
     class NodeRunListAdd < Knife
 
       deps do
-        require "chef/node"
-        require "chef/json_compat"
+        require_relative "../node"
+        require_relative "../json_compat"
       end
 
       banner "knife node run_list add [NODE] [ENTRY [ENTRY]] (options)"
@@ -32,12 +32,12 @@ class Chef
       option :after,
         short: "-a ITEM",
         long: "--after ITEM",
-        description: "Place the ENTRY in the run list after ITEM"
+        description: "Place the ENTRY in the run list after ITEM."
 
       option :before,
-             short: "-b ITEM",
-             long: "--before ITEM",
-             description: "Place the ENTRY in the run list before ITEM"
+        short: "-b ITEM",
+        long: "--before ITEM",
+        description: "Place the ENTRY in the run list before ITEM."
 
       def run
         node = Chef::Node.load(@name_args[0])

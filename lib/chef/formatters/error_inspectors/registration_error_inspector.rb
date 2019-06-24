@@ -1,7 +1,8 @@
+require_relative "../../dist"
+
 class Chef
   module Formatters
     module ErrorInspectors
-
       # == RegistrationErrorInspector
       # Wraps exceptions that occur during the client registration process and
       # suggests possible causes.
@@ -38,7 +39,7 @@ class Chef
           when Chef::Exceptions::PrivateKeyMissing
             error_description.section("Private Key Not Found:", <<~E)
               Your private key could not be loaded. If the key file exists, ensure that it is
-              readable by chef-client.
+              readable by #{Chef::Dist::CLIENT}.
             E
             error_description.section("Relevant Config Settings:", <<~E)
               validation_key "#{api_key}"
@@ -106,7 +107,7 @@ class Chef
             E
             error_description.section("Server Response:", format_rest_error)
           when Net::HTTPBadGateway, Net::HTTPServiceUnavailable
-            error_description.section("Server Unavailable", "The Chef Server is temporarily unavailable")
+            error_description.section("Server Unavailable", "The #{Chef::Dist::SERVER_PRODUCT} is temporarily unavailable")
             error_description.section("Server Response:", format_rest_error)
           else
             error_description.section("Unexpected API Request Failure:", format_rest_error)

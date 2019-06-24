@@ -87,6 +87,13 @@ describe Chef::Application do
           @app.run
         end
 
+        describe "when enforce_license is set to true" do
+          it "should check the license acceptance" do
+            expect(@app).to receive(:check_license_acceptance)
+            @app.run(enforce_license: true)
+          end
+        end
+
         it "should run the actual application" do
           expect(@app).to receive(:run_application).and_return(true)
           @app.run
@@ -162,7 +169,7 @@ describe Chef::Application do
 
         it "should emit a warning" do
           expect(Chef::Config).not_to receive(:from_file).with("/etc/chef/default.rb")
-          expect(Chef::Log).to receive(:warn).with("No config file found or specified on command line, using command line options.")
+          expect(Chef::Log).to receive(:warn).with("No config file found or specified on command line. Using command line options instead.")
           @app.configure_chef
         end
       end
@@ -305,8 +312,8 @@ describe Chef::Application do
 
     describe "when a standard exit code is supplied" do
       it "should exit with the given exit code" do
-        expect(Process).to receive(:exit).with(42).and_return(true)
-        Chef::Application.fatal! "blah", 42
+        expect(Process).to receive(:exit).with(41).and_return(true)
+        Chef::Application.fatal! "blah", 41
       end
     end
 
@@ -384,6 +391,94 @@ describe Chef::Application do
       end
     end
 
+  end
+
+  describe "#set_specific_recipes" do
+    let(:app) { Chef::Application.new }
+    context "when cli arguments does not contain any values" do
+      before do
+        allow(app).to receive(:cli_arguments).and_return([])
+      end
+
+      it "returns an empty array" do
+        app.set_specific_recipes
+        expect(Chef::Config[:specific_recipes]).to eq([])
+      end
+    end
+
+    context "when cli arguments contain valid recipe file path" do
+      let(:tempfile) { Tempfile.new("default.rb").path }
+      before do
+        allow(app).to receive(:cli_arguments).and_return([tempfile])
+      end
+
+      it "sets the specific recipes to config" do
+        app.set_specific_recipes
+        expect(Chef::Config[:specific_recipes]).to eq([tempfile])
+      end
+    end
+
+    context "when cli arguments contain invalid recipe file path" do
+      let(:fatal) { false }
+      before do
+        tempfile = "/root/default.rb"
+        allow(app).to receive(:cli_arguments).and_return([tempfile])
+        allow(Chef::Application).to receive(:fatal!).and_return(fatal)
+      end
+
+      it "raises an error with application exit" do
+        expect(app.set_specific_recipes).to eq(fatal)
+      end
+    end
+
+    context "when cli arguments contain empty string" do
+      let(:fatal) { false }
+      before do
+        allow(app).to receive(:cli_arguments).and_return([""])
+        allow(Chef::Application).to receive(:fatal!).and_return(fatal)
+      end
+
+      it "raises an arguments error" do
+        expect(app.set_specific_recipes).to eq(fatal)
+      end
+    end
+
+    context "when cli arguments contain any string" do
+      let(:fatal) { false }
+      before do
+        allow(app).to receive(:cli_arguments).and_return(["test"])
+        allow(Chef::Application).to receive(:fatal!).and_return(fatal)
+      end
+
+      it "raises an arguments error" do
+        expect(app.set_specific_recipes).to eq(fatal)
+      end
+    end
+
+    context "when cli arguments contain multiple invalid strings" do
+      let(:fatal) { false }
+      before do
+        allow(app).to receive(:cli_arguments).and_return(["", "test"])
+        allow(Chef::Application).to receive(:fatal!).and_return(fatal)
+      end
+
+      it "raises an arguments error" do
+        expect(app.set_specific_recipes).to eq(fatal)
+      end
+    end
+
+    context "when cli arguments contain valid recipe file path and invalid string" do
+      let(:fatal) { false }
+      before do
+        tempfile = Tempfile.new("default.rb").path
+        allow(app).to receive(:cli_arguments).and_return([tempfile, "test"])
+        allow(Chef::Application).to receive(:fatal!).and_return(fatal)
+      end
+
+      it "raises an arguments error" do
+        expect(app.set_specific_recipes).to eq(fatal)
+      end
+    end
   end
 
   describe "configuration errors" do

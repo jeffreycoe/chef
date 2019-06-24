@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "ffi"
-require "chef/json_compat"
+require "ffi" unless defined?(FFI)
+require_relative "json_compat"
 
 class Chef
   class PowerShell

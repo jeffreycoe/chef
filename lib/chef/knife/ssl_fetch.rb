@@ -16,19 +16,19 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/config"
+require_relative "../knife"
+require_relative "../config"
 
 class Chef
   class Knife
     class SslFetch < Chef::Knife
 
       deps do
-        require "pp"
-        require "socket"
-        require "uri"
-        require "openssl"
-        require "chef/mixin/proxified_socket"
+        require "pp" unless defined?(PP)
+        require "socket" unless defined?(Socket)
+        require "uri" unless defined?(URI)
+        require "openssl" unless defined?(OpenSSL)
+        require_relative "../mixin/proxified_socket"
         include Chef::Mixin::ProxifiedSocket
       end
 

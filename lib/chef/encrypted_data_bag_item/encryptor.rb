@@ -17,13 +17,13 @@
 #
 
 require "base64"
-require "digest/sha2"
-require "openssl"
-require "ffi_yajl"
-require "chef/encrypted_data_bag_item"
-require "chef/encrypted_data_bag_item/unsupported_encrypted_data_bag_item_format"
-require "chef/encrypted_data_bag_item/encryption_failure"
-require "chef/encrypted_data_bag_item/assertions"
+require "digest/sha2" unless defined?(Digest::SHA2)
+require "openssl" unless defined?(OpenSSL)
+require "ffi_yajl" unless defined?(FFI_Yajl)
+require_relative "../encrypted_data_bag_item"
+require_relative "unsupported_encrypted_data_bag_item_format"
+require_relative "encryption_failure"
+require_relative "assertions"
 
 class Chef::EncryptedDataBagItem
 

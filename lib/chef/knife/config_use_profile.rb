@@ -15,9 +15,9 @@
 # limitations under the License.
 #
 
-require "fileutils"
+require "fileutils" unless defined?(FileUtils)
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife

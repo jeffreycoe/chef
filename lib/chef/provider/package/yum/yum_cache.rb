@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-require "chef/provider/package/yum/python_helper"
-require "chef/provider/package"
-require "singleton"
+require_relative "python_helper"
+require_relative "../../package"
+require "singleton" unless defined?(Singleton)
 
 #
 # These are largely historical APIs, the YumCache object no longer exists and this is a

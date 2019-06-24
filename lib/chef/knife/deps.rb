@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-require "chef/chef_fs/knife"
+require_relative "../chef_fs/knife"
 
 class Chef
   class Knife
@@ -24,22 +24,24 @@ class Chef
       category "path-based"
 
       deps do
-        require "chef/chef_fs/file_system"
-        require "chef/run_list"
+        require_relative "../chef_fs/file_system"
+        require_relative "../run_list"
       end
 
       option :recurse,
         long: "--[no-]recurse",
         boolean: true,
         description: "List dependencies recursively (default: true). Only works with --tree."
+
       option :tree,
         long: "--tree",
         boolean: true,
         description: "Show dependencies in a visual tree. May show duplicates."
+
       option :remote,
         long: "--remote",
         boolean: true,
-        description: "List dependencies on the server instead of the local filesystem"
+        description: "List dependencies on the server instead of the local filesystem."
 
       attr_accessor :exit_code
 

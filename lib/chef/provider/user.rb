@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "chef/provider"
-require "etc"
+require_relative "../provider"
+require "etc" unless defined?(Etc)
 
 class Chef
   class Provider

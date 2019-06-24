@@ -2,6 +2,7 @@ require "support/shared/integration/integration_helper"
 require "chef/mixin/shell_out"
 require "tiny_server"
 require "tmpdir"
+require "chef/dist"
 
 describe "chef-client" do
 
@@ -45,10 +46,8 @@ describe "chef-client" do
   # machine that has omnibus chef installed. In that case we need to ensure
   # we're running `chef-client` from the source tree and not the external one.
   # cf. CHEF-4914
-  let(:chef_client) { "ruby '#{chef_dir}/chef-client' --minimal-ohai" }
-  let(:chef_solo) { "ruby '#{chef_dir}/chef-solo' --legacy-mode --minimal-ohai" }
-
-  let(:critical_env_vars) { %w{_ORIGINAL_GEM_PATH GEM_PATH GEM_HOME GEM_ROOT BUNDLE_BIN_PATH BUNDLE_GEMFILE RUBYLIB RUBYOPT RUBY_ENGINE RUBY_ROOT RUBY_VERSION PATH}.map { |o| "#{o}=#{ENV[o]}" } .join(" ") }
+  let(:chef_client) { "bundle exec #{Chef::Dist::CLIENT} --minimal-ohai" }
+  let(:chef_solo) { "bundle exec #{Chef::Dist::SOLOEXEC} --legacy-mode --minimal-ohai" }
 
   when_the_repository "has a cookbook with a no-op recipe" do
     before { file "cookbooks/x/recipes/default.rb", "" }
@@ -60,22 +59,6 @@ describe "chef-client" do
       EOM
 
       shell_out!("#{chef_client} -c \"#{path_to('config/client.rb')}\" -o 'x::default'", cwd: chef_dir)
-    end
-
-    it "should complete successfully with no other environment variables", skip: (Chef::Platform.windows?) do
-      file "config/client.rb", <<~EOM
-        local_mode true
-        cookbook_path "#{path_to('cookbooks')}"
-      EOM
-
-      begin
-        result = shell_out("env -i #{critical_env_vars} #{chef_client} -c \"#{path_to('config/client.rb')}\" -o 'x::default'", cwd: chef_dir)
-        result.error!
-      rescue
-        Chef::Log.info "Bare invocation will have the following load-path."
-        Chef::Log.info shell_out!("env -i #{critical_env_vars} ruby -e 'puts $:'").stdout
-        raise
-      end
     end
 
     it "should complete successfully with --no-listen" do
@@ -233,6 +216,7 @@ describe "chef-client" do
             THECONSTANT = '1'
           end
         EOM
+
         file "arbitrary.rb", <<~EOM
           file #{path_to('tempfile.txt').inspect} do
             content ::Blah::THECONSTANT
@@ -240,6 +224,72 @@ describe "chef-client" do
         EOM
 
         result = shell_out("#{chef_client} -c \"#{path_to('config/client.rb')}\" -o x::constant_definition arbitrary.rb", cwd: path_to(""))
+        result.error!
+
+        expect(IO.read(path_to("tempfile.txt"))).to eq("1")
+      end
+
+      it "should run recipes specified directly on the command line AFTER recipes in the run list (without an override_runlist this time)" do
+        file "config/client.rb", <<~EOM
+          local_mode true
+          client_key #{path_to('mykey.pem').inspect}
+          cookbook_path #{path_to('cookbooks').inspect}
+        EOM
+
+        file "config/dna.json", <<~EOM
+          {
+            "run_list": [ "recipe[x::constant_definition]" ]
+          }
+        EOM
+
+        file "cookbooks/x/recipes/constant_definition.rb", <<~EOM
+          class ::Blah
+            THECONSTANT = '1'
+          end
+        EOM
+
+        file "arbitrary.rb", <<~EOM
+          file #{path_to('tempfile.txt').inspect} do
+            content ::Blah::THECONSTANT
+          end
+        EOM
+
+        result = shell_out("#{chef_client} -c \"#{path_to('config/client.rb')}\" -j \"#{path_to('config/dna.json')}\" arbitrary.rb", cwd: path_to(""))
+        result.error!
+
+        expect(IO.read(path_to("tempfile.txt"))).to eq("1")
+      end
+
+      it "an override_runlist of an empty string should allow a recipe specified directly on the command line to be the only one run" do
+        file "config/client.rb", <<~EOM
+          local_mode true
+          client_key #{path_to('mykey.pem').inspect}
+          cookbook_path #{path_to('cookbooks').inspect}
+          class ::Blah
+            THECONSTANT = "1"
+          end
+        EOM
+
+        file "config/dna.json", <<~EOM
+          {
+            "run_list": [ "recipe[x::constant_definition]" ]
+          }
+        EOM
+
+        file "cookbooks/x/recipes/constant_definition.rb", <<~EOM
+          class ::Blah
+            THECONSTANT = "2"
+          end
+        EOM
+
+        file "arbitrary.rb", <<~EOM
+          raise "this test failed" unless ::Blah::THECONSTANT == "1"
+          file #{path_to('tempfile.txt').inspect} do
+            content ::Blah::THECONSTANT
+          end
+        EOM
+
+        result = shell_out("#{chef_client} -c \"#{path_to('config/client.rb')}\" -j \"#{path_to('config/dna.json')}\" -o \"\" arbitrary.rb", cwd: path_to(""))
         result.error!
 
         expect(IO.read(path_to("tempfile.txt"))).to eq("1")
@@ -404,45 +454,6 @@ describe "chef-client" do
 
       # Make sure there is exactly one result for each, and that it occurs *after* the complete message.
       expect(match_indices(/Test deprecation/, result.stdout)).to match([ be > run_complete ])
-    end
-  end
-
-  when_the_repository "has a cookbook with only an audit recipe" do
-
-    before do
-      file "config/client.rb", <<~EOM
-        local_mode true
-        cookbook_path "#{path_to('cookbooks')}"
-        audit_mode :enabled
-      EOM
-    end
-
-    it "should exit with a zero code when there is not an audit failure" do
-      file "cookbooks/audit_test/recipes/succeed.rb", <<~RECIPE
-        control_group "control group without top level control" do
-          it "should succeed" do
-            expect(2 - 2).to eq(0)
-          end
-        end
-      RECIPE
-
-      result = shell_out("#{chef_client} -c \"#{path_to('config/client.rb')}\" -o 'audit_test::succeed' -l info", cwd: chef_dir)
-      expect(result.error?).to be_falsey
-      expect(result.stdout).to include("Successfully executed all `control_group` blocks and contained examples")
-    end
-
-    it "should exit with a non-zero code when there is an audit failure" do
-      file "cookbooks/audit_test/recipes/fail.rb", <<~RECIPE
-        control_group "control group without top level control" do
-          it "should fail" do
-            expect(2 - 2).to eq(1)
-          end
-        end
-      RECIPE
-
-      result = shell_out("#{chef_client} -c \"#{path_to('config/client.rb')}\" -o 'audit_test::fail'", cwd: chef_dir)
-      expect(result.error?).to be_truthy
-      expect(result.stdout).to include("Failure/Error: expect(2 - 2).to eq(1)")
     end
   end
 

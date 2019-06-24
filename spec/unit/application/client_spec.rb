@@ -1,4 +1,4 @@
-#
+
 # Author:: AJ Christensen (<aj@junglist.gen.nz>)
 # Copyright:: Copyright 2008-2018, Chef Software Inc.
 # License:: Apache License, Version 2.0
@@ -91,7 +91,7 @@ describe Chef::Application::Client, "reconfigure" do
 
     # protect the unit tests against accidental --delete-entire-chef-repo from firing
     # for real during tests.  DO NOT delete this line.
-    expect(FileUtils).not_to receive(:rm_rf)
+    allow(FileUtils).to receive(:rm_rf)
   end
 
   after do
@@ -207,6 +207,111 @@ describe Chef::Application::Client, "reconfigure" do
         end
       end
     end
+
+    describe "--recipe-url and --local-mode" do
+      let(:archive) { double }
+      let(:config_exists) { false }
+
+      before do
+        allow(Chef::Config).to receive(:chef_repo_path).and_return("the_path_to_the_repo")
+        allow(FileUtils).to receive(:rm_rf)
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(app).to receive(:fetch_recipe_tarball)
+        allow(Mixlib::Archive).to receive(:new).and_return(archive)
+        allow(archive).to receive(:extract)
+        allow(Chef::Config).to receive(:from_string)
+        allow(IO).to receive(:read).with(File.join("the_path_to_the_repo", ".chef/config.rb")).and_return("new_config")
+        allow(File).to receive(:file?).with(File.join("the_path_to_the_repo", ".chef/config.rb")).and_return(config_exists)
+      end
+
+      context "local mode not set" do
+        it "fails with a message stating local mode required" do
+          expect(Chef::Application).to receive(:fatal!).with("recipe-url can be used only in local-mode").and_raise("error occured")
+          ARGV.replace(["--recipe-url=test_url"])
+          expect { app.reconfigure }.to raise_error "error occured"
+        end
+      end
+
+      context "local mode set" do
+        before do
+          ARGV.replace(["--local-mode", "--recipe-url=test_url"])
+        end
+
+        context "--delete-entire-chef-repo" do
+          before do
+            ARGV.replace(["--local-mode", "--recipe-url=test_url", "--delete-entire-chef-repo"])
+          end
+
+          it "deletes the repo" do
+            expect(FileUtils).to receive(:rm_rf)
+              .with("the_path_to_the_repo", secure: true)
+
+            app.reconfigure
+          end
+        end
+
+        it "does not delete the repo" do
+          expect(FileUtils).not_to receive(:rm_rf)
+
+          app.reconfigure
+        end
+
+        it "sets { recipe_url: 'test_url' }" do
+          app.reconfigure
+
+          expect(Chef::Config.configuration).to include recipe_url: "test_url"
+        end
+
+        it "makes the repo path" do
+          expect(FileUtils).to receive(:mkdir_p)
+            .with("the_path_to_the_repo")
+
+          app.reconfigure
+        end
+
+        it "fetches the tarball" do
+          expect(app).to receive(:fetch_recipe_tarball)
+            .with("test_url", File.join("the_path_to_the_repo", "recipes.tgz"))
+
+          app.reconfigure
+        end
+
+        it "extracts the archive" do
+          expect(Mixlib::Archive).to receive(:new)
+            .with(File.join("the_path_to_the_repo", "recipes.tgz"))
+            .and_return(archive)
+
+          expect(archive).to receive(:extract)
+            .with("the_path_to_the_repo", perms: false, ignore: /^\.$/)
+
+          app.reconfigure
+        end
+
+        context "when there is new config" do
+          let(:config_exists) { true }
+
+          it "updates the config from the extracted config" do
+            expect(Chef::Config).to receive(:from_string)
+              .with(
+                "new_config",
+                File.join("the_path_to_the_repo", ".chef/config.rb")
+              )
+
+            app.reconfigure
+          end
+        end
+
+        context "when there is no new config" do
+          let(:config_exists) { false }
+
+          it "does not updates the config" do
+            expect(Chef::Config).not_to receive(:from_string)
+
+            app.reconfigure
+          end
+        end
+      end
+    end
   end
 
   describe "when configured to not fork the client process" do
@@ -221,10 +326,10 @@ describe Chef::Application::Client, "reconfigure" do
       Chef::Config[:interval] = 600
       allow(ChefConfig).to receive(:windows?).and_return(false)
       expect(Chef::Application).to receive(:fatal!).with(
-        "Unforked chef-client interval runs are disabled in Chef 12.
+        /Unforked .* interval runs are disabled by default\.
 Configuration settings:
   interval  = 600 seconds
-Enable chef-client interval runs by setting `:client_fork = true` in your config file or adding `--fork` to your command line options."
+Enable .* interval runs by setting `:client_fork = true` in your config file or adding `--fork` to your command line options\./
       )
       app.reconfigure
     end
@@ -334,75 +439,6 @@ Enable chef-client interval runs by setting `:client_fork = true` in your config
     it "reads the JSON attributes from the specified source" do
       app.reconfigure
       expect(app.chef_client_json).to eq(json_attribs)
-    end
-  end
-
-  describe "audit mode" do
-    shared_examples "experimental feature" do
-      before do
-        allow(Chef::Log).to receive(:warn)
-      end
-    end
-
-    shared_examples "unrecognized setting" do
-      it "fatals with a message including the incorrect setting" do
-        expect(Chef::Application).to receive(:fatal!).with(/Unrecognized setting #{mode} for audit mode/)
-        app.reconfigure
-      end
-    end
-
-    shared_context "set via config file" do
-      before do
-        Chef::Config[:audit_mode] = mode
-      end
-    end
-
-    shared_context "set via command line" do
-      before do
-        ARGV.replace(["--audit-mode", mode])
-      end
-    end
-
-    describe "enabled via config file" do
-      include_context "set via config file" do
-        let(:mode) { :enabled }
-        include_examples "experimental feature"
-      end
-    end
-
-    describe "enabled via command line" do
-      include_context "set via command line" do
-        let(:mode) { "enabled" }
-        include_examples "experimental feature"
-      end
-    end
-
-    describe "audit_only via config file" do
-      include_context "set via config file" do
-        let(:mode) { :audit_only }
-        include_examples "experimental feature"
-      end
-    end
-
-    describe "audit-only via command line" do
-      include_context "set via command line" do
-        let(:mode) { "audit-only" }
-        include_examples "experimental feature"
-      end
-    end
-
-    describe "unrecognized setting via config file" do
-      include_context "set via config file" do
-        let(:mode) { :derp }
-        include_examples "unrecognized setting"
-      end
-    end
-
-    describe "unrecognized setting via command line" do
-      include_context "set via command line" do
-        let(:mode) { "derp" }
-        include_examples "unrecognized setting"
-      end
     end
   end
 

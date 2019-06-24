@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-require "uri"
-require "tempfile"
-require "chef/provider/remote_file"
+require "uri" unless defined?(URI)
+require "tempfile" unless defined?(Tempfile)
+require_relative "../remote_file"
 
 class Chef
   class Provider

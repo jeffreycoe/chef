@@ -3,7 +3,7 @@
 # Author:: Tim Hinderliter (<tim@chef.io>)
 # Author:: Christopher Walters (<cw@chef.io>)
 # Author:: Daniel DeLeo (<dan@chef.io>)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,23 +19,18 @@
 # limitations under the License.
 #
 
-require "chef/log"
-require "chef/run_context"
-require "chef/config"
-require "chef/node"
-require "chef/server_api"
+require_relative "../log"
+require_relative "../run_context"
+require_relative "../config"
+require_relative "../node"
+require_relative "../server_api"
+require_relative "../dist"
 
 class Chef
   module PolicyBuilder
 
-    # Policyfile is an experimental policy builder implementation that gets run
+    # Policyfile is a policy builder implementation that gets run
     # list and cookbook version information from a single document.
-    #
-    # == WARNING
-    # This implementation is experimental. It may be changed in incompatible
-    # ways in minor or even patch releases, or even abandoned altogether. If
-    # using this with other tools, you may be forced to upgrade those tools in
-    # lockstep with chef-client because of incompatible behavior changes.
     #
     # == Unsupported Options:
     # * override_runlist:: This could potentially be integrated into the
@@ -96,7 +91,7 @@ class Chef
         @node = nil
 
         if Chef::Config[:solo_legacy_mode]
-          raise UnsupportedFeature, "Policyfile does not support chef-solo. Use chef-client local mode instead."
+          raise UnsupportedFeature, "Policyfile does not support chef-solo. Use #{Chef::Dist::CLIENT} local mode instead."
         end
 
         if override_runlist
@@ -108,7 +103,7 @@ class Chef
         end
 
         if Chef::Config[:environment] && !Chef::Config[:environment].chomp.empty?
-          raise UnsupportedFeature, "Policyfile does not work with Chef Environments."
+          raise UnsupportedFeature, "Policyfile does not work with an Environment configured."
         end
       end
 
@@ -181,18 +176,25 @@ class Chef
       # run.
       #
       # @return [Chef::RunContext]
-      def setup_run_context(specific_recipes = nil)
+      def setup_run_context(specific_recipes = nil, run_context = nil)
         Chef::Cookbook::FileVendor.fetch_from_remote(api_service)
         sync_cookbooks
         cookbook_collection = Chef::CookbookCollection.new(cookbooks_to_sync)
         cookbook_collection.validate!
         cookbook_collection.install_gems(events)
 
-        run_context = Chef::RunContext.new(node, cookbook_collection, events)
+        run_context ||= Chef::RunContext.new
+        run_context.node = node
+        run_context.cookbook_collection = cookbook_collection
+        run_context.events = events
 
         setup_chef_class(run_context)
 
+        events.cookbook_compilation_start(run_context)
+
         run_context.load(run_list_expansion_ish)
+
+        events.cookbook_compilation_complete(run_context)
 
         setup_chef_class(run_context)
         run_context

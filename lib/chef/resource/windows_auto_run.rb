@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
@@ -28,7 +28,7 @@ class Chef
       introduced "14.0"
 
       property :program_name, String,
-               description: "The name of the program to run at login, if it differs from the resource block's name.",
+               description: "The name of the program to run at login if it differs from the resource block's name.",
                name_property: true
 
       property :path, String,

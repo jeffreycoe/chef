@@ -18,8 +18,8 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/cookbook_uploader"
+require_relative "../knife"
+require_relative "../cookbook_uploader"
 
 class Chef
   class Knife
@@ -29,9 +29,9 @@ class Chef
       MATCH_CHECKSUM = /[0-9a-f]{32,}/.freeze
 
       deps do
-        require "chef/exceptions"
-        require "chef/cookbook_loader"
-        require "chef/cookbook_uploader"
+        require_relative "../exceptions"
+        require_relative "../cookbook_loader"
+        require_relative "../cookbook_uploader"
       end
 
       banner "knife cookbook upload [COOKBOOKS...] (options)"
@@ -76,21 +76,13 @@ class Chef
 
       def run
         # Sanity check before we load anything from the server
-        unless config[:all]
-          if @name_args.empty?
-            show_usage
-            ui.fatal("You must specify the --all flag or at least one cookbook name")
-            exit 1
-          end
-        end
-
-        config[:cookbook_path] ||= Chef::Config[:cookbook_path]
-
-        if @name_args.empty? && ! config[:all]
+        if ! config[:all] && @name_args.empty?
           show_usage
           ui.fatal("You must specify the --all flag or at least one cookbook name")
           exit 1
         end
+
+        config[:cookbook_path] ||= Chef::Config[:cookbook_path]
 
         assert_environment_valid!
         version_constraints_to_update = {}
@@ -121,12 +113,6 @@ class Chef
             ui.warn("Could not find any cookbooks in your cookbook path: #{cookbook_path}. Use --cookbook-path to specify the desired path.")
           end
         else
-          if @name_args.empty?
-            show_usage
-            ui.error("You must specify the --all flag or at least one cookbook name")
-            exit 1
-          end
-
           cookbooks_to_upload.each do |cookbook_name, cookbook|
             cookbook.freeze_version if config[:freeze]
             begin

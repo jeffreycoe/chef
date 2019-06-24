@@ -1,6 +1,6 @@
 #
 # Author:: Serdar Sutay (<dan@chef.io>)
-# Copyright:: Copyright 2013-2016, Chef Software Inc.
+# Copyright:: Copyright 2013-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,16 +19,17 @@ require File.expand_path("../../spec_helper", __FILE__)
 require "chef/mixin/shell_out"
 require "chef/version"
 require "ohai/version"
+require "chef/dist"
 
 describe "Chef Versions" do
   include Chef::Mixin::ShellOut
   let(:chef_dir) { File.join(File.dirname(__FILE__), "..", "..") }
 
-  binaries = [ "chef-client", "chef-shell", "chef-apply", "knife", "chef-solo" ]
+  binaries = [ Chef::Dist::CLIENT, "chef-shell", "chef-apply", "knife", Chef::Dist::SOLOEXEC ]
 
   binaries.each do |binary|
     it "#{binary} version should be sane" do
-      expect(shell_out!("ruby #{File.join("bin", binary)} -v", cwd: chef_dir).stdout.chomp).to include("Chef: #{Chef::VERSION}")
+      expect(shell_out!("bundle exec #{binary} -v", cwd: chef_dir).stdout.chomp).to match(/.*: #{Chef::VERSION}/)
     end
   end
 

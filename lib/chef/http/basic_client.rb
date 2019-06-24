@@ -20,10 +20,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require "uri"
-require "net/http"
-require "chef/http/ssl_policies"
-require "chef/http/http_request"
+require "uri" unless defined?(URI)
+require "net/http" unless defined?(Net::HTTP)
+require_relative "ssl_policies"
+require_relative "http_request"
 
 class Chef
   class HTTP

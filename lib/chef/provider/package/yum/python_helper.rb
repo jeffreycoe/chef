@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 
-require "chef/mixin/which"
-require "chef/mixin/shell_out"
-require "chef/provider/package/yum/version"
-require "singleton"
-require "timeout"
+require_relative "../../../mixin/which"
+require_relative "../../../mixin/shell_out"
+require_relative "version"
+require "singleton" unless defined?(Singleton)
+require "timeout" unless defined?(Timeout)
 
 class Chef
   class Provider

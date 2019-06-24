@@ -17,8 +17,8 @@
 # limitations under the License.
 #
 
-require "chef/resource"
-require "chef/provider/cron" # do not remove. we actually need this below
+require_relative "../resource"
+require_relative "../provider/cron" # do not remove. we actually need this below
 
 class Chef
   class Resource

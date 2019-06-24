@@ -16,8 +16,9 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/util/path_helper"
+require_relative "../knife"
+require_relative "../util/path_helper"
+require_relative "../dist"
 
 class Chef::Knife::Exec < Chef::Knife
 
@@ -26,16 +27,16 @@ class Chef::Knife::Exec < Chef::Knife
   option :exec,
     short: "-E CODE",
     long: "--exec CODE",
-    description: "a string of Chef code to execute"
+    description: "A string of #{Chef::Dist::PRODUCT} code to execute."
 
   option :script_path,
     short: "-p PATH:PATH",
     long: "--script-path PATH:PATH",
-    description: "A colon-separated path to look for scripts in",
+    description: "A colon-separated path to look for scripts in.",
     proc: lambda { |o| o.split(":") }
 
   deps do
-    require "chef/shell/ext"
+    require_relative "../shell/ext"
   end
 
   def run

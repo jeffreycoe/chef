@@ -15,12 +15,12 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
     class OpensslDhparam < Chef::Resource
-      require "chef/mixin/openssl_helper"
+      require_relative "../mixin/openssl_helper"
       include Chef::Mixin::OpenSSLHelper
 
       resource_name :openssl_dhparam
@@ -57,20 +57,19 @@ class Chef
 
       action :create do
         description "Create the dhparam file."
-
+        dhparam_content = nil
         unless dhparam_pem_valid?(new_resource.path)
-          converge_by("Create a dhparam file #{new_resource.path}") do
-            dhparam_content = gen_dhparam(new_resource.key_length, new_resource.generator).to_pem
+          dhparam_content = gen_dhparam(new_resource.key_length, new_resource.generator).to_pem
+          Chef::Log.debug("Valid dhparam content not found at #{new_resource.path}, creating new")
+        end
 
-            file new_resource.path do
-              action :create
-              owner new_resource.owner unless new_resource.owner.nil?
-              group new_resource.group unless new_resource.group.nil?
-              mode new_resource.mode
-              sensitive true
-              content dhparam_content
-            end
-          end
+        file new_resource.path do
+          action :create
+          owner new_resource.owner
+          group new_resource.group
+          mode new_resource.mode
+          sensitive true
+          content dhparam_content
         end
       end
     end

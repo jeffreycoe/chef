@@ -1,7 +1,23 @@
-require "chef/client"
-require "chef/util/threaded_job_queue"
-require "chef/server_api"
-require "singleton"
+# License:: Apache License, Version 2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+require_relative "../client"
+require_relative "../util/threaded_job_queue"
+require_relative "../server_api"
+require "singleton" unless defined?(Singleton)
+require_relative "../dist"
 
 class Chef
 
@@ -48,7 +64,7 @@ class Chef
         # manifest.
         cache.find(File.join(%w{cookbooks ** {*,.*}})).each do |cache_filename|
           unless @valid_cache_entries[cache_filename]
-            Chef::Log.info("Removing #{cache_filename} from the cache; it is no longer needed by chef-client.")
+            Chef::Log.info("Removing #{cache_filename} from the cache; it is no longer needed by #{Chef::Dist::CLIENT}.")
             cache.delete(cache_filename)
           end
         end

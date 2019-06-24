@@ -16,11 +16,12 @@
 # limitations under the License.
 #
 
-require "chef/resource"
-require "chef/dsl/declare_resource"
-require "chef/mixin/shell_out"
-require "chef/http/simple"
-require "chef/provider/noop"
+require_relative "../resource"
+require_relative "../dsl/declare_resource"
+require_relative "../mixin/shell_out"
+require_relative "../http/simple"
+require_relative "noop"
+require "tmpdir" unless defined?(Dir.mktmpdir)
 
 class Chef
   class Provider
@@ -200,13 +201,15 @@ class Chef
       def install_key_from_uri(key)
         key_name = key.gsub(/[^0-9A-Za-z\-]/, "_")
         cached_keyfile = ::File.join(Chef::Config[:file_cache_path], key_name)
+        tmp_dir = Dir.mktmpdir(".gpg")
+        at_exit { FileUtils.remove_entry(tmp_dir) }
 
         declare_resource(key_type(key), cached_keyfile) do
           source key
           mode "0644"
           sensitive new_resource.sensitive
           action :create
-          verify "gpg %{path}"
+          verify "gpg --homedir #{tmp_dir} %{path}"
         end
 
         declare_resource(:execute, "apt-key add #{cached_keyfile}") do

@@ -5,8 +5,9 @@ require "chef/config"
 require "timeout"
 require "fileutils"
 require "chef/win32/security" if Chef::Platform.windows?
+require "chef/dist"
 
-describe "chef-solo" do
+describe Chef::Dist::SOLOEXEC do
   include IntegrationSupport
   include Chef::Mixin::ShellOut
 
@@ -16,7 +17,7 @@ describe "chef-solo" do
 
   let(:cookbook_ancient_100_metadata_rb) { cb_metadata("ancient", "1.0.0") }
 
-  let(:chef_solo) { "ruby bin/chef-solo --legacy-mode --minimal-ohai" }
+  let(:chef_solo) { "bundle exec #{Chef::Dist::SOLOEXEC} --legacy-mode --minimal-ohai" }
 
   when_the_repository "creates nodes" do
     let(:nodes_dir) { File.join(@repository_dir, "nodes") }
@@ -26,7 +27,7 @@ describe "chef-solo" do
       file "config/solo.rb", <<~EOM
         chef_repo_path "#{@repository_dir}"
       EOM
-      result = shell_out("ruby bin/chef-solo -c \"#{path_to('config/solo.rb')}\" -l debug", cwd: chef_dir)
+      result = shell_out("bundle exec chef-solo -c \"#{path_to('config/solo.rb')}\" -l debug", cwd: chef_dir)
       result.error!
     end
 
@@ -163,7 +164,7 @@ describe "chef-solo" do
         ruby_block "sleeping" do
           block do
             retries = 200
-            while IO.read(Chef::Config[:log_location]) !~ /Chef client .* is running, will wait for it to finish and then run./
+            while IO.read(Chef::Config[:log_location]) !~ /.* is running, will wait for it to finish and then run./
               sleep 0.1
               raise "we ran out of retries" if ( retries -= 1 ) <= 0
             end
@@ -207,10 +208,10 @@ describe "chef-solo" do
       run_log = File.read(path_to("logs/runs.log"))
 
       # second run should have a message which indicates it's waiting for the first run
-      expect(run_log).to match(/Chef client .* is running, will wait for it to finish and then run./)
+      expect(run_log).to match(/.* is running, will wait for it to finish and then run./)
 
       # both of the runs should succeed
-      expect(run_log.lines.reject { |l| !l.include? "INFO: Chef Run complete in" }.length).to eq(2)
+      expect(run_log.lines.reject { |l| !l.include? "Run complete in" }.length).to eq(2)
     end
 
   end

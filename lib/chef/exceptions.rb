@@ -18,6 +18,7 @@
 # limitations under the License.
 
 require "chef-config/exceptions"
+require_relative "dist"
 
 class Chef
   # == Chef::Exceptions
@@ -131,7 +132,7 @@ class Chef
     # Can't find a Resource of this type that is valid on this platform.
     class NoSuchResourceType < NameError
       def initialize(short_name, node)
-        super "Cannot find a resource for #{short_name} on #{node[:platform]} version #{node[:platform_version]}"
+        super "Cannot find a resource for #{short_name} on #{node[:platform]} version #{node[:platform_version]} with target_mode? #{Chef::Config.target_mode?}"
       end
     end
 
@@ -300,7 +301,7 @@ class Chef
 
       def client_run_failure(exception)
         set_backtrace(exception.backtrace)
-        @all_failures << [ "chef run", exception ]
+        @all_failures << [ "#{Chef::Dist::PRODUCT} run", exception ]
       end
 
       def notification_failure(exception)
@@ -401,7 +402,7 @@ class Chef
       def initialize(response_length, content_length)
         super <<~EOF
           Response body length #{response_length} does not match HTTP Content-Length header #{content_length}.
-          This error is most often caused by network issues (proxies, etc) outside of chef-client.
+          This error is most often caused by network issues (proxies, etc) outside of #{Chef::Dist::CLIENT}.
         EOF
       end
     end
@@ -443,26 +444,7 @@ class Chef
       end
     end
 
-    class AuditError < RuntimeError; end
-
-    class AuditControlGroupDuplicate < AuditError
-      def initialize(name)
-        super "Control group with name '#{name}' has already been defined"
-      end
-    end
-    class AuditNameMissing < AuditError; end
-    class NoAuditsProvided < AuditError
-      def initialize
-        super "You must provide a block with controls"
-      end
-    end
-    class AuditsFailed < AuditError
-      def initialize(num_failed, num_total)
-        super "Audit phase found failures - #{num_failed}/#{num_total} controls failed"
-      end
-    end
-
-    # If a converge or audit fails, we want to wrap the output from those errors into 1 error so we can
+    # If a converge fails, we want to wrap the output from those errors into 1 error so we can
     # see both issues in the output.  It is possible that nil will be provided.  You must call `fill_backtrace`
     # to correctly populate the backtrace with the wrapped backtraces.
     class RunFailedWrappingError < RuntimeError

@@ -46,7 +46,7 @@ describe Chef::Knife::Core::BootstrapContext do
     expect { described_class.new(config, run_list, chef_config) }.not_to raise_error
   end
 
-  it "runs chef with the first-boot.json with no environment specified" do
+  it "runs chef with the first-boot.json with no environment" do
     expect(bootstrap_context.start_chef).to eq "chef-client -j /etc/chef/first-boot.json"
   end
 
@@ -77,6 +77,13 @@ describe Chef::Knife::Core::BootstrapContext do
       # Using default node name (fqdn)
     EXPECTED
     expect(bootstrap_context.config_content).to eq expected
+  end
+
+  describe "when chef_license is set" do
+    let(:chef_config) { { chef_license: "accept-no-persist" } }
+    it "sets chef_license in the generated config file" do
+      expect(bootstrap_context.config_content).to include("chef_license \"accept-no-persist\"")
+    end
   end
 
   describe "alternate chef-client path" do
@@ -156,37 +163,6 @@ describe Chef::Knife::Core::BootstrapContext do
     end
   end
 
-  describe "when a bootstrap_version is specified" do
-    let(:chef_config) do
-      {
-        knife: { bootstrap_version: "11.12.4" },
-      }
-    end
-
-    it "should send the full version to the installer" do
-      expect(bootstrap_context.latest_current_chef_version_string).to eq("-v 11.12.4")
-    end
-  end
-
-  describe "when a pre-release bootstrap_version is specified" do
-    let(:chef_config) do
-      {
-        knife: { bootstrap_version: "11.12.4.rc.0" },
-      }
-    end
-
-    it "should send the full version to the installer and set the pre-release flag" do
-      expect(bootstrap_context.latest_current_chef_version_string).to eq("-v 11.12.4.rc.0 -p")
-    end
-  end
-
-  describe "when a bootstrap_version is not specified" do
-    it "should send the latest current to the installer" do
-      # Intentionally hard coded in order not to replicate the logic.
-      expect(bootstrap_context.latest_current_chef_version_string).to eq("-v #{Chef::VERSION.to_i}")
-    end
-  end
-
   describe "ssl_verify_mode" do
     it "isn't set in the config_content by default" do
       expect(bootstrap_context.config_content).not_to include("ssl_verify_mode")
@@ -218,15 +194,12 @@ describe Chef::Knife::Core::BootstrapContext do
       Chef::Config[:fips] = true
     end
 
-    it "adds the chef version check" do
-      expect(bootstrap_context.config_content).to include <<-CONFIG.gsub(/^ {8}/, "")
-        fips true
-        require "chef/version"
-        chef_version = ::Chef::VERSION.split(".")
-        unless chef_version[0].to_i > 12 || (chef_version[0].to_i == 12 && chef_version[1].to_i >= 8)
-          raise "FIPS Mode requested but not supported by this client"
-        end
-      CONFIG
+    after do
+      Chef::Config.reset!
+    end
+
+    it "sets fips mode in the client.rb" do
+      expect(bootstrap_context.config_content).to match(/fips true/)
     end
   end
 
@@ -252,20 +225,6 @@ describe Chef::Knife::Core::BootstrapContext do
         it "uses CLI value" do
           expect(bootstrap_context.config_content).to include("verify_api_cert true")
         end
-      end
-    end
-  end
-
-  describe "prerelease" do
-    it "isn't set in the config_content by default" do
-      expect(bootstrap_context.config_content).not_to include("prerelease")
-    end
-
-    describe "when configured via cli" do
-      let(:config) { { prerelease: true } }
-
-      it "uses CLI value" do
-        expect(bootstrap_context.latest_current_chef_version_string).to eq("-p")
       end
     end
   end
@@ -320,5 +279,29 @@ describe Chef::Knife::Core::BootstrapContext do
       end
     end
 
+  end
+
+  describe "#version_to_install" do
+    context "when bootstrap_version is provided" do
+      let(:chef_config) { { knife: { bootstrap_version: "awesome" } } }
+
+      it "returns bootstrap_version" do
+        expect(bootstrap_context.version_to_install).to eq "awesome"
+      end
+    end
+
+    context "when bootstrap_version is not provided" do
+      let(:config) { { channel: "stable" } }
+      it "returns the currently running major version out of Chef::VERSION" do
+        expect(bootstrap_context.version_to_install).to eq Chef::VERSION.split(".").first
+      end
+    end
+
+    context "and channel is other than stable" do
+      let(:config) { { channel: "unstable" } }
+      it "returns the version string 'latest'" do
+        expect(bootstrap_context.version_to_install).to eq "latest"
+      end
+    end
   end
 end

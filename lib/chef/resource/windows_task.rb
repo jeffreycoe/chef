@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "chef/resource"
-require "chef/win32/security" if Chef::Platform.windows?
+require_relative "../resource"
+require_relative "../win32/security" if Chef::Platform.windows?
 
 class Chef
   class Resource
@@ -32,7 +32,7 @@ class Chef
       default_action :create
 
       property :task_name, String, regex: [/\A[^\/\:\*\?\<\>\|]+\z/],
-               description: "The task name, such as 'Task Name' or '/Task Name'",
+               description: "An optional property to set the task name if it differs from the resource block's name. Example: 'Task Name' or '/Task Name'",
                name_property: true
 
       property :command, String,
@@ -119,6 +119,10 @@ class Chef
       property :description, String,
                introduced: "14.7",
                description: "The task description."
+
+      property :start_when_available, [TrueClass, FalseClass],
+               introduced: "15.0", default: false,
+               description: "To start the task at any time after its scheduled time has passed."
 
       attr_accessor :exists, :task, :command_arguments
 

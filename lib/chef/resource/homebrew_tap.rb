@@ -17,8 +17,8 @@
 # limitations under the License.
 #
 
-require "chef/resource"
-require "chef/mixin/homebrew_user"
+require_relative "../resource"
+require_relative "../mixin/homebrew_user"
 
 class Chef
   class Resource
@@ -78,6 +78,9 @@ class Chef
         end
       end
 
+      # Is the passed tap already tapped
+      #
+      # @return [Boolean]
       def tapped?(name)
         tap_dir = name.gsub("/", "/homebrew-")
         ::File.directory?("/usr/local/Homebrew/Library/Taps/#{tap_dir}")

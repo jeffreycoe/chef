@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "tempfile"
-require "chef/http/simple"
+require "tempfile" unless defined?(Tempfile)
+require_relative "../http/simple"
 
 class Chef
   class Provider

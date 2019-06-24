@@ -17,7 +17,7 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
@@ -28,7 +28,7 @@ class Chef
       introduced "14.6"
 
       property :timezone, String,
-               description: "The timezone value to set.",
+               description: "An optional property to set the timezone value if it differs from the resource block's name.",
                name_property: true
 
       action :set do

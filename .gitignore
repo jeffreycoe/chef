@@ -47,6 +47,7 @@ kitchen-tests/Berksfile.lock
 # Temporary files present during spec runs
 spec/data/test-dir
 spec/data/nodes
+spec/data/chef_guid
 /config/
 
 vendor/
@@ -61,3 +62,9 @@ nodes/
 # chef-config
 chef-config/.bundle
 chef-config/Gemfile.lock
+chef-config/pkg
+
+# chef-bin
+chef-bin/.bundle
+chef-bin/Gemfile.lock
+chef-bin/pkg

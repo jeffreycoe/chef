@@ -17,7 +17,7 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
@@ -27,7 +27,7 @@ class Chef
       attr_accessor :cookbook_name
 
       deps do
-        require "chef/cookbook_version"
+        require_relative "../cookbook_version"
       end
 
       banner "knife cookbook download COOKBOOK [VERSION] (options)"
@@ -35,19 +35,19 @@ class Chef
       option :latest,
        short: "-N",
        long: "--latest",
-       description: "The version of the cookbook to download",
+       description: "The version of the cookbook to download.",
        boolean: true
 
       option :download_directory,
        short: "-d DOWNLOAD_DIRECTORY",
        long: "--dir DOWNLOAD_DIRECTORY",
-       description: "The directory to download the cookbook into",
+       description: "The directory to download the cookbook into.",
        default: Dir.pwd
 
       option :force,
        short: "-f",
        long: "--force",
-       description: "Force download over the download directory if it exists"
+       description: "Force download over the download directory if it exists."
 
       # TODO: tim/cw: 5-23-2010: need to implement knife-side
       # specificity for downloads - need to implement --platform and

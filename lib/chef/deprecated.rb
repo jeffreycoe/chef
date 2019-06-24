@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-require "chef/mixin/convert_to_class_name"
+require_relative "mixin/convert_to_class_name"
 
 # Structured deprecations have a unique URL associated with them, which must exist before the deprecation is merged.
 class Chef
@@ -207,9 +207,7 @@ class Chef
       target 23
     end
 
-    class MapCollision < Base
-      target 25
-    end
+    # id 25 was deleted
 
     # id 3694 was deleted
 
@@ -226,6 +224,10 @@ class Chef
       target 26
     end
 
+    class LocaleLcAll < Base
+      target 27
+    end
+
     class Generic < Base
       def url
         "https://docs.chef.io/chef_deprecations_client.html"
@@ -235,6 +237,5 @@ class Chef
         "Deprecation from #{location}\n\n  #{message}\n\n#{link}"
       end
     end
-
   end
 end

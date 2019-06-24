@@ -1,6 +1,6 @@
 #
 # Author:: Lamont Granquist (<lamont@chef.io>)
-# Copyright:: Copyright 2014-2018, Chef Software Inc.
+# Copyright:: Copyright 2014-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -145,14 +145,14 @@ describe Chef::NodeMap do
   describe "deleting classes" do
     it "deletes a class and removes the mapping completely" do
       node_map.set(:thing, Bar)
-      expect( node_map.delete_class(Bar) ).to include({ thing: [{ klass: Bar, cookbook_override: false, core_override: false }] })
+      expect( node_map.delete_class(Bar) ).to include({ thing: [{ klass: Bar, target_mode: nil }] })
       expect( node_map.get(node, :thing) ).to eql(nil)
     end
 
     it "deletes a class and leaves the mapping that still has an entry" do
       node_map.set(:thing, Bar)
       node_map.set(:thing, Foo)
-      expect( node_map.delete_class(Bar) ).to eql({ thing: [{ klass: Bar, cookbook_override: false, core_override: false }] })
+      expect( node_map.delete_class(Bar) ).to eql({ thing: [{ klass: Bar, target_mode: nil }] })
       expect( node_map.get(node, :thing) ).to eql(Foo)
     end
 
@@ -160,7 +160,7 @@ describe Chef::NodeMap do
       node_map.set(:thing1, Bar)
       node_map.set(:thing2, Bar)
       node_map.set(:thing2, Foo)
-      expect( node_map.delete_class(Bar) ).to eql({ thing1: [{ klass: Bar, cookbook_override: false, core_override: false }], thing2: [{ klass: Bar, cookbook_override: false, core_override: false }] })
+      expect( node_map.delete_class(Bar) ).to eql({ thing1: [{ klass: Bar, target_mode: nil }], thing2: [{ klass: Bar, target_mode: nil }] })
       expect( node_map.get(node, :thing1) ).to eql(nil)
       expect( node_map.get(node, :thing2) ).to eql(Foo)
     end
@@ -210,10 +210,44 @@ describe Chef::NodeMap do
     end
   end
 
+  # When in target mode, only match when target_mode is explicitly supported
+  context "when target mode is enabled" do
+    before do
+      allow(Chef::Config).to receive(:target_mode?).and_return(true)
+    end
+
+    it "returns the value when target_mode matches" do
+      node_map.set(:something, :network, target_mode: true)
+      expect(node_map.get(node, :something)).to eql(:network)
+    end
+
+    it "returns nil when target_mode does not match" do
+      node_map.set(:something, :local, target_mode: false)
+      expect(node_map.get(node, :something)).to eql(nil)
+    end
+  end
+
+  # When not in target mode, match regardless of target_mode filter
+  context "when target mode is not enabled" do
+    before do
+      allow(Chef::Config).to receive(:target_mode?).and_return(false)
+    end
+
+    it "returns the value if target_mode matches" do
+      node_map.set(:something, :local, target_mode: true)
+      expect(node_map.get(node, :something)).to eql(:local)
+    end
+
+    it "returns the value if target_mode does not match" do
+      node_map.set(:something, :local, target_mode: false)
+      expect(node_map.get(node, :something)).to eql(:local)
+    end
+  end
+
   describe "locked mode" do
     context "while unlocked" do
       it "allows setting the same key twice" do
-        expect(Chef).to_not receive(:deprecated)
+        expect(Chef::Log).to_not receive(:warn)
         node_map.set(:foo, FooResource)
         node_map.set(:foo, BarResource)
         expect(node_map.get(node, :foo)).to eql(BarResource)
@@ -221,53 +255,20 @@ describe Chef::NodeMap do
     end
 
     context "while locked" do
-      # Uncomment the commented `expect`s in 15.0.
-      it "rejects setting the same key twice" do
-        expect(Chef).to receive(:deprecated).with(:map_collision, /Resource foo/)
+      it "warns on setting the same key twice" do
+        expect(Chef::Log).to receive(:warn).with(/Resource foo/)
         node_map.set(:foo, FooResource)
         node_map.lock!
         node_map.set(:foo, BarResource)
-        # expect(node_map.get(node, :foo)).to eql(FooResource)
-      end
-
-      it "allows setting the same key twice when the first has allow_cookbook_override" do
-        expect(Chef).to_not receive(:deprecated)
-        node_map.set(:foo, FooResource, allow_cookbook_override: true)
-        node_map.lock!
-        node_map.set(:foo, BarResource)
         expect(node_map.get(node, :foo)).to eql(BarResource)
       end
 
-      it "allows setting the same key twice when the first has allow_cookbook_override with a future version" do
-        expect(Chef).to_not receive(:deprecated)
-        node_map.set(:foo, FooResource, allow_cookbook_override: "< 100")
-        node_map.lock!
-        node_map.set(:foo, BarResource)
-        expect(node_map.get(node, :foo)).to eql(BarResource)
-      end
-
-      it "rejects setting the same key twice when the first has allow_cookbook_override with a past version" do
-        expect(Chef).to receive(:deprecated).with(:map_collision, /Resource foo/)
-        node_map.set(:foo, FooResource, allow_cookbook_override: "< 1")
-        node_map.lock!
-        node_map.set(:foo, BarResource)
-        # expect(node_map.get(node, :foo)).to eql(FooResource)
-      end
-
-      it "allows setting the same key twice when the second has __core_override__" do
-        expect(Chef).to_not receive(:deprecated)
-        node_map.set(:foo, FooResource)
-        node_map.lock!
-        node_map.set(:foo, BarResource, __core_override__: true)
-        expect(node_map.get(node, :foo)).to eql(BarResource)
-      end
-
-      it "rejects setting the same key twice for a provider" do
-        expect(Chef).to receive(:deprecated).with(:map_collision, /Provider foo/)
+      it "warns on setting the same key twice for a provider" do
+        expect(Chef::Log).to receive(:warn).with(/Provider foo/)
         node_map.set(:foo, FooProvider)
         node_map.lock!
         node_map.set(:foo, BarProvider)
-        # expect(node_map.get(node, :foo)).to eql(FooProvider)
+        expect(node_map.get(node, :foo)).to eql(BarProvider)
       end
     end
   end

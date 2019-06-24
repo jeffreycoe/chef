@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 
-require "chef/mixin/uris"
-require "chef/resource/package"
-require "chef/provider/package/windows"
-require "chef/win32/error" if RUBY_PLATFORM =~ /mswin|mingw|windows/
+require_relative "../mixin/uris"
+require_relative "package"
+require_relative "../provider/package/windows"
+require_relative "../win32/error" if RUBY_PLATFORM =~ /mswin|mingw|windows/
 
 class Chef
   class Resource

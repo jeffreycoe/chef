@@ -18,8 +18,8 @@
 # limitations under the License.
 #
 
-require "etc"
-require "chef/mixin/homebrew_user"
+require "etc" unless defined?(Etc)
+require_relative "../../mixin/homebrew_user"
 
 class Chef
   class Provider

@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require "chef/client"
-require "forwardable"
+require_relative "client"
+require "forwardable" unless defined?(Forwardable)
 
 class Chef
   # The base class for an Exception or Notification Handler. Create your own

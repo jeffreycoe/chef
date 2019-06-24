@@ -1,6 +1,6 @@
 #
 # Author:: Adam Jacob (<adam@chef.io>)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -953,14 +953,6 @@ describe Chef::Node do
       expect(node.automatic_attrs[:platform_version]).to eq("23.42")
     end
 
-    it "sets the chef guid attribute correctly" do
-      guid = Chef::Config[:chef_guid]
-      Chef::Config[:chef_guid] = "test-guid-guid"
-      node.consume_external_attrs(@ohai_data, {})
-      expect(node.automatic_attrs[:chef_guid]).to eq("test-guid-guid")
-      Chef::Config[:chef_guid] = guid
-    end
-
     it "consumes the run list from provided json attributes" do
       node.consume_external_attrs(@ohai_data, { "run_list" => ["recipe[unicorn]"] })
       expect(node.run_list).to eq(["recipe[unicorn]"])
@@ -1469,13 +1461,12 @@ describe Chef::Node do
 
       context "with whitelisted attributes configured" do
         it "should only save whitelisted attributes (and subattributes)" do
-          Chef::Config[:automatic_attribute_whitelist] = [
+          Chef::Config[:default_attribute_whitelist] = [
             ["filesystem", "/dev/disk0s2"],
             "network/interfaces/eth0",
           ]
 
-          data = {
-            "automatic" => {
+          node.default = {
               "filesystem" => {
                 "/dev/disk0s2" => { "size" => "10mb" },
                 "map - autohome" => { "size" => "10mb" },
@@ -1486,12 +1477,13 @@ describe Chef::Node do
                   "eth1" => {},
                 },
               },
-            },
-            "default" => {}, "normal" => {}, "override" => {}
-          }
+            }
+          node.automatic = {}
+          node.normal = {}
+          node.override = {}
 
           selected_data = {
-            "automatic" => {
+            "default" => {
               "filesystem" => {
                 "/dev/disk0s2" => { "size" => "10mb" },
               },
@@ -1501,12 +1493,11 @@ describe Chef::Node do
                 },
               },
             },
-            "default" => {}, "normal" => {}, "override" => {}
+            "automatic" => {}, "normal" => {}, "override" => {}
           }
 
           node.name("picky-monkey")
-          allow(node).to receive(:for_json).and_return(data)
-          expect(@rest).to receive(:put).with("nodes/picky-monkey", selected_data).and_return("foo")
+          expect(@rest).to receive(:put).with("nodes/picky-monkey", hash_including(selected_data)).and_return("foo")
           node.save
         end
 
@@ -1515,8 +1506,7 @@ describe Chef::Node do
             "foo/bar/baz",
           ]
 
-          data = {
-            "default" => {
+          node.default = {
               "foo" => {
                 "bar" => {
                   "baz" => false,
@@ -1525,8 +1515,11 @@ describe Chef::Node do
                   "stuff" => true,
                 },
               },
-            },
-          }
+            }
+
+          node.automatic = {}
+          node.normal = {}
+          node.override = {}
 
           selected_data = {
             "default" => {
@@ -1539,44 +1532,41 @@ describe Chef::Node do
           }
 
           node.name("falsey-monkey")
-          allow(node).to receive(:for_json).and_return(data)
-          expect(@rest).to receive(:put).with("nodes/falsey-monkey", selected_data).and_return("foo")
+          expect(@rest).to receive(:put).with("nodes/falsey-monkey", hash_including(selected_data)).and_return("foo")
           node.save
         end
 
         it "should not save any attributes if the whitelist is empty" do
-          Chef::Config[:automatic_attribute_whitelist] = []
+          Chef::Config[:default_attribute_whitelist] = []
 
-          data = {
-            "automatic" => {
+          node.default = {
               "filesystem" => {
                 "/dev/disk0s2" => { "size" => "10mb" },
                 "map - autohome" => { "size" => "10mb" },
               },
-            },
-            "default" => {}, "normal" => {}, "override" => {}
-          }
+            }
+          node.automatic = {}
+          node.normal = {}
+          node.override = {}
 
           selected_data = {
             "automatic" => {}, "default" => {}, "normal" => {}, "override" => {}
           }
 
           node.name("picky-monkey")
-          allow(node).to receive(:for_json).and_return(data)
-          expect(@rest).to receive(:put).with("nodes/picky-monkey", selected_data).and_return("foo")
+          expect(@rest).to receive(:put).with("nodes/picky-monkey", hash_including(selected_data)).and_return("foo")
           node.save
         end
       end
 
       context "with blacklisted attributes configured" do
         it "should only save non-blacklisted attributes (and subattributes)" do
-          Chef::Config[:automatic_attribute_blacklist] = [
+          Chef::Config[:default_attribute_blacklist] = [
             ["filesystem", "/dev/disk0s2"],
             "network/interfaces/eth0",
           ]
 
-          data = {
-            "automatic" => {
+          node.default = {
               "filesystem" => {
                 "/dev/disk0s2" => { "size" => "10mb" },
                 "map - autohome" => { "size" => "10mb" },
@@ -1587,12 +1577,13 @@ describe Chef::Node do
                   "eth1" => {},
                 },
               },
-            },
-            "default" => {}, "normal" => {}, "override" => {}
-          }
+            }
+          node.automatic = {}
+          node.normal = {}
+          node.override = {}
 
           selected_data = {
-            "automatic" => {
+            "default" => {
               "filesystem" => {
                 "map - autohome" => { "size" => "10mb" },
               },
@@ -1602,40 +1593,38 @@ describe Chef::Node do
                 },
               },
             },
-            "default" => {}, "normal" => {}, "override" => {}
+            "automatic" => {}, "normal" => {}, "override" => {}
           }
           node.name("picky-monkey")
-          allow(node).to receive(:for_json).and_return(data)
-          expect(@rest).to receive(:put).with("nodes/picky-monkey", selected_data).and_return("foo")
+          expect(@rest).to receive(:put).with("nodes/picky-monkey", hash_including(selected_data)).and_return("foo")
           node.save
         end
 
-        it "should  save all attributes if the blacklist is empty" do
-          Chef::Config[:automatic_attribute_blacklist] = []
+        it "should save all attributes if the blacklist is empty" do
+          Chef::Config[:default_attribute_blacklist] = []
 
-          data = {
-            "automatic" => {
+          node.default = {
               "filesystem" => {
                 "/dev/disk0s2" => { "size" => "10mb" },
                 "map - autohome" => { "size" => "10mb" },
               },
-            },
-            "default" => {}, "normal" => {}, "override" => {}
-          }
+            }
+          node.automatic = {}
+          node.normal = {}
+          node.override = {}
 
           selected_data = {
-            "automatic" => {
+            "default" => {
               "filesystem" => {
                 "/dev/disk0s2" => { "size" => "10mb" },
                 "map - autohome" => { "size" => "10mb" },
               },
             },
-            "default" => {}, "normal" => {}, "override" => {}
+            "automatic" => {}, "normal" => {}, "override" => {}
           }
 
           node.name("picky-monkey")
-          allow(node).to receive(:for_json).and_return(data)
-          expect(@rest).to receive(:put).with("nodes/picky-monkey", selected_data).and_return("foo")
+          expect(@rest).to receive(:put).with("nodes/picky-monkey", hash_including(selected_data)).and_return("foo")
           node.save
         end
       end

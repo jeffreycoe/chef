@@ -1,6 +1,6 @@
 #
 # Author:: Adam Jacob (<adam@chef.io>)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -143,6 +143,7 @@ RSpec.configure do |config|
   config.filter_run_excluding skip_travis: true if ENV["TRAVIS"]
 
   config.filter_run_excluding windows_only: true unless windows?
+  config.filter_run_excluding not_supported_on_windows: true if windows?
   config.filter_run_excluding not_supported_on_macos: true if mac_osx?
   config.filter_run_excluding macos_only: true if !mac_osx?
   config.filter_run_excluding not_supported_on_aix: true if aix?
@@ -171,6 +172,7 @@ RSpec.configure do |config|
   config.filter_run_excluding linux_only: true unless linux?
   config.filter_run_excluding aix_only: true unless aix?
   config.filter_run_excluding suse_only: true unless suse?
+  config.filter_run_excluding sles11: true unless sles11?
   config.filter_run_excluding debian_family_only: true unless debian_family?
   config.filter_run_excluding supports_cloexec: true unless supports_cloexec?
   config.filter_run_excluding selinux_only: true unless selinux_enabled?

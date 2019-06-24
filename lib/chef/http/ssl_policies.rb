@@ -21,8 +21,8 @@
 # limitations under the License.
 #
 
-require "openssl"
-require "chef/util/path_helper"
+require "openssl" unless defined?(OpenSSL)
+require_relative "../util/path_helper"
 
 class Chef
   class HTTP

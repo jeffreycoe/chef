@@ -16,20 +16,20 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
     class ClientBulkDelete < Knife
 
       deps do
-        require "chef/api_client_v1"
+        require_relative "../api_client_v1"
       end
 
       option :delete_validators,
        short: "-D",
        long: "--delete-validators",
-       description: "Force deletion of clients if they're validators"
+       description: "Force deletion of clients if they're validators."
 
       banner "knife client bulk delete REGEX (options)"
 

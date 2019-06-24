@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 
-require "chef/exceptions"
-require "chef/log"
-require "chef/provider"
-require "fileutils"
+require_relative "../exceptions"
+require_relative "../log"
+require_relative "../provider"
+require "fileutils" unless defined?(FileUtils)
 
 class Chef
   class Provider
@@ -151,7 +151,7 @@ class Chef
       end
 
       def clone
-        converge_by("clone from #{new_resource.repository} into #{cwd}") do
+        converge_by("clone from #{repo_url} into #{cwd}") do
           remote = new_resource.remote
 
           clone_cmd = ["clone"]
@@ -161,7 +161,7 @@ class Chef
           clone_cmd << "\"#{new_resource.repository}\""
           clone_cmd << "\"#{cwd}\""
 
-          logger.info "#{new_resource} cloning repo #{new_resource.repository} to #{cwd}"
+          logger.info "#{new_resource} cloning repo #{repo_url} to #{cwd}"
           git clone_cmd
         end
       end
@@ -314,7 +314,7 @@ class Chef
           # user who is executing `git` not the user running Chef.
           env["HOME"] =
             begin
-              require "etc"
+              require "etc" unless defined?(Etc)
               case new_resource.user
               when Integer
                 Etc.getpwuid(new_resource.user).dir
@@ -344,6 +344,16 @@ class Chef
         string =~ /^[0-9a-f]{40}$/
       end
 
+      # Returns a message for sensitive repository URL if sensitive is true otherwise
+      # repository URL is returned
+      # @return [String]
+      def repo_url
+        if new_resource.sensitive
+          "**Suppressed Sensitive URL**"
+        else
+          new_resource.repository
+        end
+      end
     end
   end
 end

@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-require "chef/win32/api/system"
-require "chef/win32/error"
-require "ffi"
+require_relative "api/system"
+require_relative "error"
+require "ffi" unless defined?(FFI)
 
 class Chef
   module ReservedNames::Win32

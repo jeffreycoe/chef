@@ -29,7 +29,7 @@ class Chef
     class Base
 
       # Called at the very start of a Chef Run
-      def run_start(version)
+      def run_start(version, run_status)
       end
 
       def run_started(run_status)
@@ -44,6 +44,7 @@ class Chef
       end
 
       # Called right after ohai runs.
+      # NOTE: the node object here is always nil because of when it is called
       def ohai_completed(node)
       end
 
@@ -72,6 +73,10 @@ class Chef
       end
 
       # TODO: def node_run_list_overridden(*args)
+
+      # Called once the node is loaded by the policy builder
+      def node_load_success(node)
+      end
 
       # Failed to load node data from the server
       def node_load_failed(node_name, exception, config)
@@ -162,6 +167,10 @@ class Chef
       ## TODO: add cookbook name to the API for file load callbacks
 
       ## TODO: add callbacks for overall cookbook eval start and complete.
+
+      # Called immediately after creating the run_context and before any cookbook compilation happens
+      def cookbook_compilation_start(run_context)
+      end
 
       # Called when library file loading starts
       def library_load_start(file_count)
@@ -263,8 +272,16 @@ class Chef
       def recipe_load_complete
       end
 
+      # This is called after all cookbook compilation phases are completed.
+      def cookbook_compilation_complete(run_context)
+      end
+
       # Called before convergence starts
       def converge_start(run_context)
+      end
+
+      # Callback hook for handlers to register their interest in the action_collection
+      def action_collection_registration(action_collection)
       end
 
       # Called when the converge phase is finished.
@@ -273,37 +290,6 @@ class Chef
 
       # Called if the converge phase fails
       def converge_failed(exception)
-      end
-
-      ##################################
-      # Audit Mode Events
-      # This phase is currently experimental and these event APIs are subject to change
-      ##################################
-
-      # Called before audit phase starts
-      def audit_phase_start(run_status)
-      end
-
-      # Called when audit phase successfully finishes
-      def audit_phase_complete(audit_output)
-      end
-
-      # Called if there is an uncaught exception during the audit phase.  The audit runner should
-      # be catching and handling errors from the examples, so this is only uncaught errors (like
-      # bugs in our handling code)
-      def audit_phase_failed(exception, audit_output)
-      end
-
-      # Signifies the start of a `control_group` block with a defined name
-      def control_group_started(name)
-      end
-
-      # An example in a `control_group` block completed successfully
-      def control_example_success(control_group_name, example_data)
-      end
-
-      # An example in a `control_group` block failed with the provided error
-      def control_example_failure(control_group_name, example_data, error)
       end
 
       # TODO: need events for notification resolve?

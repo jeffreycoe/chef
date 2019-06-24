@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-require "chef/http/auth_credentials"
-require "chef/exceptions"
-require "openssl"
+require_relative "auth_credentials"
+require_relative "../exceptions"
+require "openssl" unless defined?(OpenSSL)
 
 class Chef
   class HTTP

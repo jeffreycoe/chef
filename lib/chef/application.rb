@@ -1,7 +1,7 @@
 #
 # Author:: AJ Christensen (<aj@chef.io>)
 # Author:: Mark Mzyk (mmzyk@chef.io)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,18 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "pp"
-require "socket"
-require "chef/config"
-require "chef/config_fetcher"
-require "chef/exceptions"
-require "chef/local_mode"
-require "chef/log"
-require "chef/platform"
-require "mixlib/cli"
-require "tmpdir"
+require "pp" unless defined?(PP)
+require "socket" unless defined?(Socket)
+require_relative "config"
+require_relative "config_fetcher"
+require_relative "exceptions"
+require_relative "local_mode"
+require_relative "log"
+require_relative "platform"
+require "mixlib/cli" unless defined?(Mixlib::CLI)
+require "tmpdir" unless defined?(Dir.mktmpdir)
 require "rbconfig"
-require "chef/application/exit_code"
+require_relative "application/exit_code"
+require_relative "dist"
+require "license_acceptance/acceptor"
 
 class Chef
   class Application
@@ -59,10 +61,11 @@ class Chef
     end
 
     # Get this party started
-    def run
+    def run(enforce_license: false)
       setup_signal_handlers
       reconfigure
       setup_application
+      check_license_acceptance if enforce_license
       run_application
     end
 
@@ -132,10 +135,10 @@ class Chef
       config[:config_file] = config_fetcher.expanded_path
 
       if config[:config_file].nil?
-        logger.warn("No config file found or specified on command line, using command line options.")
+        logger.warn("No config file found or specified on command line. Using command line options instead.")
       elsif config_fetcher.config_missing?
         logger.warn("*****************************************")
-        logger.warn("Did not find config file: #{config[:config_file]}, using command line options.")
+        logger.warn("Did not find config file: #{config[:config_file]}. Using command line options instead.")
         logger.warn("*****************************************")
       else
         config_content = config_fetcher.read_config
@@ -152,10 +155,16 @@ class Chef
       Chef::Application.fatal!(e.message)
     end
 
+    # Set the specific recipes to Chef::Config if the recipes are valid
+    # otherwise log a fatal error message and exit the application.
     def set_specific_recipes
-      if cli_arguments.respond_to?(:map)
+      if cli_arguments.is_a?(Array) &&
+          (cli_arguments.empty? || cli_arguments.all? { |file| File.file?(file) } )
         chef_config[:specific_recipes] =
           cli_arguments.map { |file| File.expand_path(file) }
+      else
+        Chef::Application.fatal!("Invalid arguments are not supported by the chef-client: \"" +
+          cli_arguments.select { |file| !File.file?(file) }.join('", "') + '"')
       end
     end
 
@@ -247,6 +256,15 @@ class Chef
       raise Chef::Exceptions::Application, "#{self}: you must override setup_application"
     end
 
+    def check_license_acceptance
+      LicenseAcceptance::Acceptor.check_and_persist!(
+        "infra-client",
+        Chef::VERSION.to_s,
+        logger: logger,
+        provided: Chef::Config[:chef_license]
+      )
+    end
+
     # Actually run the application
     def run_application
       raise Chef::Exceptions::Application, "#{self}: you must override run_application"
@@ -260,7 +278,6 @@ class Chef
 
       Chef::LocalMode.with_server_connectivity do
         override_runlist = config[:override_runlist]
-        override_runlist ||= [] if specific_recipes.size > 0
         @chef_client = Chef::Client.new(
           @chef_client_json,
           override_runlist: override_runlist,
@@ -305,7 +322,7 @@ class Chef
     end
 
     def fork_chef_client
-      logger.info "Forking chef instance to converge..."
+      logger.info "Forking #{Chef::Dist::PRODUCT} instance to converge..."
       pid = fork do
         # Want to allow forked processes to finish converging when
         # TERM singal is received (exit gracefully)
@@ -314,7 +331,7 @@ class Chef
             " finishing converge to exit normally (send SIGINT to terminate immediately)")
         end
 
-        client_solo = chef_config[:solo] ? "chef-solo" : "chef-client"
+        client_solo = chef_config[:solo] ? "#{Chef::Dist::SOLOEXEC}" : "#{Chef::Dist::CLIENT}"
         $0 = "#{client_solo} worker: ppid=#{Process.ppid};start=#{Time.new.strftime("%R:%S")};"
         begin
           logger.trace "Forked instance now converging"

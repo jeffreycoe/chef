@@ -17,7 +17,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "chef/resource"
+require_relative "../resource"
+require_relative "../dist"
 
 class Chef
   class Resource
@@ -111,7 +112,7 @@ class Chef
 
       # all this does is send an immediate run_action(:create) to the template resource
       action :flush do
-        description "Immediately flush the entries to the config file. Without this the actual writing of the file is delayed in the Chef run so all entries can be accumulated before writing the file out."
+        description "Immediately flush the entries to the config file. Without this the actual writing of the file is delayed in the #{Chef::Dist::PRODUCT} run so all entries can be accumulated before writing the file out."
 
         with_run_context :root do
           # if you haven't ever called ssh_known_hosts_entry before you're definitely doing it wrong so we blow up hard.

@@ -1,6 +1,6 @@
 #
 # Author:: Adam Jacob (<adam@chef.io>)
-# Copyright:: Copyright 2010-2018, Chef Software Inc.
+# Copyright:: Copyright 2010-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +16,9 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/knife/supermarket_install"
+require_relative "../knife"
+require_relative "supermarket_install"
+require_relative "../dist"
 
 class Chef
   class Knife
@@ -25,10 +26,14 @@ class Chef
 
       # Handle the subclassing (knife doesn't do this :()
       dependency_loaders.concat(superclass.dependency_loaders)
-      options.merge!(superclass.options)
 
       banner "knife cookbook site install COOKBOOK [VERSION] (options)"
-      category "cookbook site"
+      category "deprecated"
+
+      def run
+        Chef::Log.warn("knife cookbook site install has been deprecated in favor of knife supermarket install. In #{Chef::Dist::PRODUCT} 16 (April 2020) this will result in an error!")
+        super
+      end
 
     end
   end

@@ -18,32 +18,32 @@
 # limitations under the License.
 #
 
-require "chef/exceptions"
-require "chef/dsl/data_query"
-require "chef/dsl/registry_helper"
-require "chef/dsl/reboot_pending"
-require "chef/dsl/resources"
-require "chef/dsl/declare_resource"
-require "chef/json_compat"
-require "chef/mixin/convert_to_class_name"
-require "chef/guard_interpreter/resource_guard_interpreter"
-require "chef/resource/conditional"
-require "chef/resource/conditional_action_not_nothing"
-require "chef/resource/action_class"
-require "chef/resource_collection"
-require "chef/node_map"
-require "chef/node"
-require "chef/platform"
-require "chef/resource/resource_notification"
-require "chef/provider_resolver"
-require "chef/resource_resolver"
-require "chef/provider"
-require "set"
+require_relative "exceptions"
+require_relative "dsl/data_query"
+require_relative "dsl/registry_helper"
+require_relative "dsl/reboot_pending"
+require_relative "dsl/resources"
+require_relative "dsl/declare_resource"
+require_relative "json_compat"
+require_relative "mixin/convert_to_class_name"
+require_relative "guard_interpreter/resource_guard_interpreter"
+require_relative "resource/conditional"
+require_relative "resource/conditional_action_not_nothing"
+require_relative "resource/action_class"
+require_relative "resource_collection"
+require_relative "node_map"
+require_relative "node"
+require_relative "platform"
+require_relative "resource/resource_notification"
+require_relative "provider_resolver"
+require_relative "resource_resolver"
+require_relative "provider"
+require "set" unless defined?(Set)
 
-require "chef/mixin/deprecation"
-require "chef/mixin/properties"
-require "chef/mixin/provides"
-require "chef/dsl/universal"
+require_relative "mixin/deprecation"
+require_relative "mixin/properties"
+require_relative "mixin/provides"
+require_relative "dsl/universal"
 
 class Chef
   class Resource
@@ -140,6 +140,7 @@ class Chef
       @guard_interpreter = nil
       @default_guard_interpreter = :default
       @elapsed_time = 0
+      @executed_by_runner = false
     end
 
     #
@@ -451,6 +452,11 @@ class Chef
     # action.  Not cumulative.
     #
     attr_reader :elapsed_time
+
+    #
+    # @return [Boolean] If the resource was executed by the runner
+    #
+    attr_accessor :executed_by_runner
 
     #
     # The guard interpreter that will be used to process `only_if` and `not_if`
@@ -1166,10 +1172,9 @@ class Chef
 
     # Set or return if this resource is in preview mode.
     #
-    # This is used in Chef core as part of the process of migrating resources
-    # from a cookbook into core. It should be set to `true` when a cookbook
-    # resource is added to core, and then removed (set to `false`) in the next
-    # major release.
+    # This only has value in the resource_inspector to mark a resource as being new-to-chef-core.
+    # Its meaning is probably more equivalent to "experimental" in that the API might change even
+    # in minor versions due to bugfixing and is NOT considered "stable" yet.
     #
     # @param value [nil, Boolean] If nil, get the current value. If not nil, set
     #   the value of the flag.
@@ -1184,8 +1189,10 @@ class Chef
     # Internal Resource Interface (for Chef)
     #
 
-    FORBIDDEN_IVARS = [:@run_context, :@logger, :@not_if, :@only_if, :@enclosing_provider, :@description, :@introduced, :@examples, :@validation_message, :@deprecated, :@default_description, :@skip_docs].freeze
-    HIDDEN_IVARS = [:@allowed_actions, :@resource_name, :@source_line, :@run_context, :@logger, :@name, :@not_if, :@only_if, :@elapsed_time, :@enclosing_provider, :@description, :@introduced, :@examples, :@validation_message, :@deprecated, :@default_description, :@skip_docs].freeze
+    # FORBIDDEN_IVARS do not show up when the resource is converted to JSON (ie. hidden from data_collector and sending to the chef server via #to_json/to_h/as_json/inspect)
+    FORBIDDEN_IVARS = [:@run_context, :@logger, :@not_if, :@only_if, :@enclosing_provider, :@description, :@introduced, :@examples, :@validation_message, :@deprecated, :@default_description, :@skip_docs, :@executed_by_runner].freeze
+    # HIDDEN_IVARS do not show up when the resource is displayed to the user as text (ie. in the error inspector output via #to_text)
+    HIDDEN_IVARS = [:@allowed_actions, :@resource_name, :@source_line, :@run_context, :@logger, :@name, :@not_if, :@only_if, :@elapsed_time, :@enclosing_provider, :@description, :@introduced, :@examples, :@validation_message, :@deprecated, :@default_description, :@skip_docs, :@executed_by_runner].freeze
 
     include Chef::Mixin::ConvertToClassName
     extend Chef::Mixin::ConvertToClassName
@@ -1344,12 +1351,6 @@ class Chef
       # canonical DSL before adding the new one.
       if @resource_name && name == @resource_name
         remove_canonical_dsl
-      end
-
-      # If a resource is in preview mode, set allow_cookbook_override on all its
-      # mappings by default.
-      if preview_resource && !options.include?(:allow_cookbook_override)
-        options[:allow_cookbook_override] = true
       end
 
       if @chef_version_for_provides && !options.include?(:chef_version)
@@ -1588,4 +1589,4 @@ class Chef
 end
 
 # Requiring things at the bottom breaks cycles
-require "chef/chef_class"
+require_relative "chef_class"

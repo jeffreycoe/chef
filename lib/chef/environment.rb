@@ -19,12 +19,13 @@
 # limitations under the License.
 #
 
-require "chef/config"
-require "chef/mash"
-require "chef/mixin/params_validate"
-require "chef/mixin/from_file"
-require "chef/version_constraint"
-require "chef/server_api"
+require_relative "config"
+require_relative "mash"
+require_relative "mixin/params_validate"
+require_relative "mixin/from_file"
+require_relative "version_constraint"
+require_relative "server_api"
+require_relative "dist"
 
 class Chef
   class Environment
@@ -306,7 +307,7 @@ class Chef
     def self.validate_cookbook_version(version)
       if Chef::Config[:solo_legacy_mode]
         raise Chef::Exceptions::IllegalVersionConstraint,
-              "Environment cookbook version constraints not allowed in chef-solo"
+              "Environment cookbook version constraints not allowed in #{Chef::Dist::SOLO}"
       else
         Chef::VersionConstraint.new version
         true

@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 
-require "chef/win32/security"
-require "chef/win32/api/security"
-require "chef/win32/unicode"
-require "ffi"
+require_relative "../security"
+require_relative "../api/security"
+require_relative "../unicode"
+require "ffi" unless defined?(FFI)
 
 class Chef
   module ReservedNames::Win32

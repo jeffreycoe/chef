@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-require "chef/knife"
+require_relative "../knife"
 
 class Chef
   class Knife
@@ -26,7 +26,7 @@ class Chef
       category "supermarket"
 
       deps do
-        require "fileutils"
+        require "fileutils" unless defined?(FileUtils)
       end
 
       option :file,

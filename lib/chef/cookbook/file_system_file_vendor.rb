@@ -1,4 +1,3 @@
-#--
 # Author:: Christopher Walters (<cw@chef.io>)
 # Author:: Tim Hinderliter (<tim@chef.io>)
 # Copyright:: Copyright 2010-2016, Chef Software Inc.
@@ -17,7 +16,7 @@
 # limitations under the License.
 #
 
-require "chef/cookbook/file_vendor"
+require_relative "file_vendor"
 
 class Chef
   class Cookbook

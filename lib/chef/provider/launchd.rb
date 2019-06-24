@@ -16,12 +16,12 @@
 # limitations under the License.
 #
 
-require "chef/provider"
-require "chef/resource/file"
-require "chef/resource/cookbook_file"
-require "chef/resource/macosx_service"
+require_relative "../provider"
+require_relative "../resource/file"
+require_relative "../resource/cookbook_file"
+require_relative "../resource/macosx_service"
 require "plist"
-require "forwardable"
+require "forwardable" unless defined?(Forwardable)
 
 class Chef
   class Provider
@@ -195,6 +195,7 @@ class Chef
           "inetd_compatibility" => "inetdCompatibility",
           "init_groups" => "InitGroups",
           "keep_alive" => "KeepAlive",
+          "launch_events" => "LaunchEvents",
           "launch_only_once" => "LaunchOnlyOnce",
           "limit_load_from_hosts" => "LimitLoadFromHosts",
           "limit_load_to_hosts" => "LimitLoadToHosts",

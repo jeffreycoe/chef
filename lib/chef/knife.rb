@@ -17,25 +17,26 @@
 # limitations under the License.
 #
 
-require "forwardable"
-require "chef/version"
-require "mixlib/cli"
-require "chef/workstation_config_loader"
-require "chef/mixin/convert_to_class_name"
-require "chef/mixin/path_sanity"
-require "chef/knife/core/subcommand_loader"
-require "chef/knife/core/ui"
-require "chef/local_mode"
-require "chef/server_api"
-require "chef/http/authenticator"
-require "chef/http/http_request"
-require "chef/http"
-require "pp"
+require "forwardable" unless defined?(Forwardable)
+require_relative "version"
+require "mixlib/cli" unless defined?(Mixlib::CLI)
+require_relative "workstation_config_loader"
+require_relative "mixin/convert_to_class_name"
+require_relative "mixin/path_sanity"
+require_relative "knife/core/subcommand_loader"
+require_relative "knife/core/ui"
+require_relative "local_mode"
+require_relative "server_api"
+require_relative "http/authenticator"
+require_relative "http/http_request"
+require_relative "http"
+require "pp" unless defined?(PP)
+require_relative "dist"
 
 class Chef
   class Knife
 
-    Chef::HTTP::HTTPRequest.user_agent = "Chef Knife#{Chef::HTTP::HTTPRequest::UA_COMMON}"
+    Chef::HTTP::HTTPRequest.user_agent = "#{Chef::Dist::PRODUCT} Knife#{Chef::HTTP::HTTPRequest::UA_COMMON}"
 
     include Mixlib::CLI
     include Chef::Mixin::PathSanity
@@ -87,6 +88,7 @@ class Chef
     end
 
     def self.inherited(subclass)
+      super
       unless subclass.unnamed?
         subcommands[subclass.snake_case_name] = subclass
         subcommand_files[subclass.snake_case_name] +=
@@ -272,7 +274,7 @@ class Chef
         if category_commands = guess_category(args)
           list_commands(category_commands)
         elsif OFFICIAL_PLUGINS.include?(args[0]) # command was an uninstalled official chef knife plugin
-          ui.info("Use `chef gem install knife-#{args[0]}` to install the plugin into ChefDK")
+          ui.info("Use `#{Chef::Dist::EXEC} gem install knife-#{args[0]}` to install the plugin into ChefDK")
         else
           list_commands
         end
@@ -316,7 +318,11 @@ class Chef
         exit 1
       end
 
-      # copy Mixlib::CLI over so that it can be configured in knife.rb
+      # Grab a copy before config merge occurs, so that we can later identify
+      # whare a given config value is sourced from.
+      @original_config = config.dup
+
+      # copy Mixlib::CLI over so that it can be configured in config.rb/knife.rb
       # config file
       Chef::Config[:verbosity] = config[:verbosity] if config[:verbosity]
     end
@@ -344,7 +350,9 @@ class Chef
     # overwrite.
     def config_file_settings
       cli_keys.each_with_object({}) do |key, memo|
-        memo[key] = Chef::Config[:knife][key] if Chef::Config[:knife].key?(key)
+        if Chef::Config[:knife].key?(key)
+          memo[key] = Chef::Config[:knife][key]
+        end
       end
     end
 
@@ -353,11 +361,32 @@ class Chef
     #  config_file_settings - Chef::Config[:knife] sub-hash
     #  config               - mixlib-cli settings (accessor from the mixin)
     def merge_configs
+      # Update our original_config - if someone has created a knife command
+      # instance directly, they are likely ot have set cmd.config values directly
+      # as well, at which point our saved original config is no longer up to date.
+      @original_config = config.dup
       # other code may have a handle to the config object, so use Hash#replace to deliberately
       # update-in-place.
-      config.replace(
-        default_config.merge(config_file_settings).merge(config)
-      )
+      config.replace(default_config.merge(config_file_settings).merge(config))
+    end
+
+    #
+    # Determine the source of a given configuration key
+    #
+    # @argument key [Symbol] a configuration key
+    # @return [Symbol,NilClass] return the source of the config key,
+    # one of:
+    #   - :cli - this was explicitly provided on the CLI
+    #   - :config - this came from Chef::Config[:knife]
+    #   - :cli_default - came from a declared CLI `option`'s `default` value.
+    #   - nil - if the key could not be found in any source.
+    #           This can happen when it is invalid, or has been
+    #           set directly into #config without then calling #merge_config
+    def config_source(key)
+      return :cli if @original_config.include? key
+      return :config if config_file_settings.key? key
+      return :cli_default if default_config.include? key
+      nil
     end
 
     # Catch-all method that does any massaging needed for various config
@@ -446,7 +475,7 @@ class Chef
         run
       end
     rescue Exception => e
-      raise if raise_exception || Chef::Config[:verbosity] == 2
+      raise if raise_exception || ( Chef::Config[:verbosity] && Chef::Config[:verbosity] >= 2 )
       humanize_exception(e)
       exit 100
     end
@@ -460,7 +489,7 @@ class Chef
       when OpenSSL::SSL::SSLError
         ui.error "Could not establish a secure connection to the server."
         ui.info "Use `knife ssl check` to troubleshoot your SSL configuration."
-        ui.info "If your Chef Server uses a self-signed certificate, you can use"
+        ui.info "If your server uses a self-signed certificate, you can use"
         ui.info "`knife ssl fetch` to make knife trust the server's certificates."
         ui.info ""
         ui.info  "Original Exception: #{e.class.name}: #{e.message}"
@@ -477,7 +506,7 @@ class Chef
         ui.info  "Check your configuration file and ensure that your private key is readable"
       when Chef::Exceptions::InvalidRedirect
         ui.error "Invalid Redirect: #{e.message}"
-        ui.info  "Change your server location in knife.rb to the server's FQDN to avoid unwanted redirections."
+        ui.info  "Change your server location in config.rb/knife.rb to the server's FQDN to avoid unwanted redirections."
       else
         ui.error "#{e.class.name}: #{e.message}"
       end
@@ -493,7 +522,7 @@ class Chef
         ui.error "You authenticated successfully to #{server_url} as #{username} but you are not authorized for this action."
         proxy_env_vars = ENV.to_hash.keys.map(&:downcase) & %w{http_proxy https_proxy ftp_proxy socks_proxy no_proxy}
         unless proxy_env_vars.empty?
-          ui.error "There are proxy servers configured, your Chef server may need to be added to NO_PROXY."
+          ui.error "There are proxy servers configured, your server url may need to be added to NO_PROXY."
         end
         ui.info "Response:  #{format_rest_error(response)}"
       when Net::HTTPBadRequest
@@ -516,10 +545,10 @@ class Chef
         client_api_version = version_header["request_version"]
         min_server_version = version_header["min_version"]
         max_server_version = version_header["max_version"]
-        ui.error "The version of Chef that Knife is using is not supported by the Chef server you sent this request to"
-        ui.info "The request that Knife sent was using API version #{client_api_version}"
-        ui.info "The Chef server you sent the request to supports a min API verson of #{min_server_version} and a max API version of #{max_server_version}"
-        ui.info "Please either update your Chef client or server to be a compatible set"
+        ui.error "The API version that Knife is using is not supported by the server you sent this request to."
+        ui.info "The request that Knife sent was using API version #{client_api_version}."
+        ui.info "The server you sent the request to supports a min API verson of #{min_server_version} and a max API version of #{max_server_version}."
+        ui.info "Please either update your #{Chef::Dist::PRODUCT} or the server to be a compatible set."
       else
         ui.error response.message
         ui.info "Response: #{format_rest_error(response)}"
@@ -594,14 +623,14 @@ class Chef
 
     def rest
       @rest ||= begin
-        require "chef/server_api"
+        require_relative "server_api"
         Chef::ServerAPI.new(Chef::Config[:chef_server_url])
       end
     end
 
     def noauth_rest
       @rest ||= begin
-        require "chef/http/simple_json"
+        require_relative "http/simple_json"
         Chef::HTTP::SimpleJSON.new(Chef::Config[:chef_server_url])
       end
     end

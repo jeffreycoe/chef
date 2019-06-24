@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "chef/chef_fs"
-require "pathname"
+require_relative "../chef_fs"
+require "pathname" unless defined?(Pathname)
 
 class Chef
   module ChefFS

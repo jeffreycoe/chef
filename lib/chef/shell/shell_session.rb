@@ -18,16 +18,17 @@
 # limitations under the License.
 #
 
-require "chef/recipe"
-require "chef/run_context"
-require "chef/config"
-require "chef/client"
-require "chef/cookbook/cookbook_collection"
-require "chef/cookbook_loader"
-require "chef/run_list/run_list_expansion"
-require "chef/formatters/base"
-require "chef/formatters/doc"
-require "chef/formatters/minimal"
+require_relative "../recipe"
+require_relative "../run_context"
+require_relative "../config"
+require_relative "../client"
+require_relative "../cookbook/cookbook_collection"
+require_relative "../cookbook_loader"
+require_relative "../run_list/run_list_expansion"
+require_relative "../formatters/base"
+require_relative "../formatters/doc"
+require_relative "../formatters/minimal"
+require_relative "../dist"
 
 module Shell
   class ShellSession
@@ -87,7 +88,7 @@ module Shell
     end
 
     def save_node
-      raise "Not Supported! #{self.class.name} doesn't support #save_node, maybe you need to run chef-shell in client mode?"
+      raise "Not Supported! #{self.class.name} doesn't support #save_node, maybe you need to run #{Chef::Dist::SHELL} in client mode?"
     end
 
     def rebuild_context

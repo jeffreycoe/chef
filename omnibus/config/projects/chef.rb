@@ -15,11 +15,11 @@
 #
 
 name "chef"
-friendly_name "Chef Client"
+friendly_name "Chef Infra Client"
 maintainer "Chef Software, Inc. <maintainers@chef.io>"
 homepage "https://www.chef.io"
-license "Apache-2.0"
-license_file "../LICENSE"
+license "Chef EULA"
+license_file "CHEF-EULA.md"
 
 build_iteration 1
 # Do not use __FILE__ after this point, use current_file. If you use __FILE__

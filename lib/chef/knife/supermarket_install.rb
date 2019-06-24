@@ -1,6 +1,6 @@
 #
 # Author:: Christopher Webber (<cwebber@chef.io>)
-# Copyright:: Copyright (c) 2014-2018 Chef Software, Inc.
+# Copyright:: Copyright (c) 2014-2019 Chef Software, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/exceptions"
-require "shellwords"
-require "mixlib/archive"
+require_relative "../knife"
+require_relative "../exceptions"
 
 class Chef
   class Knife
     class SupermarketInstall < Knife
 
       deps do
-        require "chef/mixin/shell_out"
-        require "chef/knife/core/cookbook_scm_repo"
-        require "chef/cookbook/metadata"
+        require "shellwords" unless defined?(Shellwords)
+        require "mixlib/archive" unless defined?(Mixlib::Archive)
+        require_relative "core/cookbook_scm_repo"
+        require_relative "../cookbook/metadata"
       end
 
       banner "knife supermarket install COOKBOOK [VERSION] (options)"
@@ -71,8 +70,6 @@ class Chef
       attr_reader :vendor_path
 
       def run
-        extend Chef::Mixin::ShellOut
-
         if config[:cookbook_path]
           Chef::Config[:cookbook_path] = config[:cookbook_path]
         else

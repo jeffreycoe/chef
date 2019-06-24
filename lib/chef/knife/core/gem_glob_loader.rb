@@ -16,14 +16,14 @@
 # limitations under the License.
 #
 
-require "chef/version"
-require "chef/util/path_helper"
+require_relative "../../version"
+require_relative "../../util/path_helper"
 class Chef
   class Knife
     class SubcommandLoader
       class GemGlobLoader < Chef::Knife::SubcommandLoader
-        MATCHES_CHEF_GEM = %r{/chef-[\d]+\.[\d]+\.[\d]+}.freeze
-        MATCHES_THIS_CHEF_GEM = %r{/chef-#{Chef::VERSION}(-\w+)?(-\w+)?/}.freeze
+        MATCHES_CHEF_GEM ||= %r{/chef-[\d]+\.[\d]+\.[\d]+}.freeze
+        MATCHES_THIS_CHEF_GEM ||= %r{/chef-#{Chef::VERSION}(-\w+)?(-\w+)?/}.freeze
 
         def subcommand_files
           @subcommand_files ||= (gem_and_builtin_subcommands.values + site_subcommands).flatten.uniq
@@ -39,7 +39,7 @@ class Chef
         # subcommand loader has been modified to load the plugins by using Kernel.load
         # with the absolute path.
         def gem_and_builtin_subcommands
-          require "rubygems"
+          require "rubygems" unless defined?(Gem)
           find_subcommands_via_rubygems
         rescue LoadError
           find_subcommands_via_dirglob

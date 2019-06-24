@@ -19,7 +19,7 @@
 # limitations under the License.
 #
 
-require "chef/json_compat"
+require_relative "../json_compat"
 
 class Chef
   class Resource
@@ -31,7 +31,7 @@ class Chef
 
       property :rule_name, String,
                name_property: true,
-               description: "The name to assign to the firewall rule."
+               description: "An optional property to set the name of the firewall rule to assign if it differs from the resource block's name."
 
       property :description, String,
                default: "Firewall rule",

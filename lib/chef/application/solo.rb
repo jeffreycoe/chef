@@ -1,7 +1,7 @@
 #
 # Author:: AJ Christensen (<aj@chef.io>)
 # Author:: Mark Mzyk (mmzyk@chef.io)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,33 +16,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "chef"
-require "chef/application"
-require "chef/application/client"
-require "chef/client"
-require "chef/config"
-require "chef/daemon"
-require "chef/log"
-require "chef/config_fetcher"
-require "fileutils"
-require "chef/mixin/shell_out"
-require "pathname"
+require_relative "../../chef"
+require_relative "../application"
+require_relative "client"
+require_relative "../client"
+require_relative "../config"
+require_relative "../daemon"
+require_relative "../log"
+require_relative "../config_fetcher"
+require "fileutils" unless defined?(FileUtils)
+require_relative "../mixin/shell_out"
+require "pathname" unless defined?(Pathname)
 require "chef-config/mixin/dot_d"
-require "mixlib/archive"
+require "mixlib/archive" unless defined?(Mixlib::Archive)
+require_relative "../dist"
+require "license_acceptance/cli_flags/mixlib_cli"
 
 class Chef::Application::Solo < Chef::Application
   include Chef::Mixin::ShellOut
   include ChefConfig::Mixin::DotD
+  include LicenseAcceptance::CLIFlags::MixlibCLI
 
   option :config_file,
     short: "-c CONFIG",
     long: "--config CONFIG",
-    default: Chef::Config.platform_specific_path("/etc/chef/solo.rb"),
-    description: "The configuration file to use"
+    default: Chef::Config.platform_specific_path("#{Chef::Dist::CONF_DIR}/solo.rb"),
+    description: "The configuration file to use."
 
   option :config_option,
     long: "--config-option OPTION=VALUE",
-    description: "Override a single configuration option",
+    description: "Override a single configuration option.",
     proc: lambda { |option, existing|
       (existing ||= []) << option
       existing
@@ -51,49 +54,49 @@ class Chef::Application::Solo < Chef::Application
   option :formatter,
     short: "-F FORMATTER",
     long: "--format FORMATTER",
-    description: "output format to use",
+    description: "The output format to use.",
     proc: lambda { |format| Chef::Config.add_formatter(format) }
 
   option :force_logger,
     long: "--force-logger",
-    description: "Use logger output instead of formatter output",
+    description: "Use logger output instead of formatter output.",
     boolean: true,
     default: false
 
   option :force_formatter,
     long: "--force-formatter",
-    description: "Use formatter output instead of logger output",
+    description: "Use formatter output instead of logger output.",
     boolean: true,
     default: false
 
   option :profile_ruby,
     long: "--[no-]profile-ruby",
-    description: "Dump complete Ruby call graph stack of entire Chef run (expert only)",
+    description: "Dump complete Ruby call graph stack of entire #{Chef::Dist::PRODUCT} run (expert only).",
     boolean: true,
     default: false
 
   option :color,
     long: "--[no-]color",
     boolean: true,
-    default: !Chef::Platform.windows?,
-    description: "Use colored output, defaults to enabled"
+    default: true,
+    description: "Use colored output, defaults to enabled."
 
   option :log_level,
     short: "-l LEVEL",
     long: "--log_level LEVEL",
-    description: "Set the log level (trace, debug, info, warn, error, fatal)",
+    description: "Set the log level (auto, trace, debug, info, warn, error, fatal).",
     proc: lambda { |l| l.to_sym }
 
   option :log_location,
     short: "-L LOGLOCATION",
     long: "--logfile LOGLOCATION",
-    description: "Set the log file location, defaults to STDOUT",
+    description: "Set the log file location, defaults to STDOUT - recommended for daemonizing.",
     proc: nil
 
   option :help,
     short: "-h",
     long: "--help",
-    description: "Show this message",
+    description: "Show this help message.",
     on: :tail,
     boolean: true,
     show_options: true,
@@ -102,50 +105,50 @@ class Chef::Application::Solo < Chef::Application
   option :user,
     short: "-u USER",
     long: "--user USER",
-    description: "User to set privilege to",
+    description: "User to set privilege to.",
     proc: nil
 
   option :group,
     short: "-g GROUP",
     long: "--group GROUP",
-    description: "Group to set privilege to",
+    description: "Group to set privilege to.",
     proc: nil
 
   unless Chef::Platform.windows?
     option :daemonize,
       short: "-d",
       long: "--daemonize",
-      description: "Daemonize the process",
+      description: "Daemonize the process.",
       proc: lambda { |p| true }
   end
 
   option :lockfile,
     long: "--lockfile LOCKFILE",
-    description: "Set the lockfile location. Prevents multiple processes from converging at the same time",
+    description: "Set the lockfile location. Prevents multiple #{Chef::Dist::SOLO} processes from converging at the same time.",
     proc: nil
 
   option :interval,
     short: "-i SECONDS",
     long: "--interval SECONDS",
-    description: "Run chef-client periodically, in seconds",
+    description: "Run #{Chef::Dist::CLIENT} periodically, in seconds.",
     proc: lambda { |s| s.to_i }
 
   option :json_attribs,
     short: "-j JSON_ATTRIBS",
     long: "--json-attributes JSON_ATTRIBS",
-    description: "Load attributes from a JSON file or URL",
+    description: "Load attributes from a JSON file or URL.",
     proc: nil
 
   option :node_name,
     short: "-N NODE_NAME",
     long: "--node-name NODE_NAME",
-    description: "The node name for this client",
+    description: "The node name for this client.",
     proc: nil
 
   option :splay,
     short: "-s SECONDS",
     long: "--splay SECONDS",
-    description: "The splay time for running at intervals, in seconds",
+    description: "The splay time for running at intervals, in seconds.",
     proc: lambda { |s| s.to_i }
 
   option :recipe_url,
@@ -156,15 +159,15 @@ class Chef::Application::Solo < Chef::Application
   option :version,
     short: "-v",
     long: "--version",
-    description: "Show chef version",
+    description: "Show #{Chef::Dist::PRODUCT} version.",
     boolean: true,
-    proc: lambda { |v| puts "Chef: #{::Chef::VERSION}" },
+    proc: lambda { |v| puts "#{Chef::Dist::PRODUCT}: #{::Chef::VERSION}" },
     exit: 0
 
   option :override_runlist,
     short: "-o RunlistItem,RunlistItem...",
     long: "--override-runlist RunlistItem,RunlistItem...",
-    description: "Replace current run list with specified items",
+    description: "Replace current run list with specified items for a single run.",
     proc: lambda { |items|
       items = items.split(",")
       items.compact.map do |item|
@@ -175,23 +178,23 @@ class Chef::Application::Solo < Chef::Application
   option :client_fork,
     short: "-f",
     long: "--[no-]fork",
-    description: "Fork client"
+    description: "Fork #{Chef::Dist::CLIENT} process."
 
   option :why_run,
     short: "-W",
     long: "--why-run",
-    description: "Enable whyrun mode",
+    description: "Enable whyrun mode.",
     boolean: true
 
   option :ez,
     long: "--ez",
-    description: "A memorial for Ezra Zygmuntowicz",
+    description: "A memorial for Ezra Zygmuntowicz.",
     boolean: true
 
   option :environment,
     short: "-E ENVIRONMENT",
     long: "--environment ENVIRONMENT",
-    description: "Set the Chef Environment on the node"
+    description: "Set the #{Chef::Dist::PRODUCT} environment on the node."
 
   option :run_lock_timeout,
     long: "--run-lock-timeout SECONDS",
@@ -200,30 +203,31 @@ class Chef::Application::Solo < Chef::Application
 
   option :minimal_ohai,
     long: "--minimal-ohai",
-    description: "Only run the bare minimum ohai plugins chef needs to function",
+    description: "Only run the bare minimum Ohai plugins #{Chef::Dist::PRODUCT} needs to function.",
     boolean: true
 
   option :delete_entire_chef_repo,
     long: "--delete-entire-chef-repo",
-    description: "DANGEROUS: does what it says, only useful with --recipe-url",
+    description: "DANGEROUS: does what it says, only useful with --recipe-url.",
     boolean: true
 
   option :solo_legacy_mode,
     long: "--legacy-mode",
-    description: "Run chef-solo in legacy mode",
+    description: "Run #{Chef::Dist::SOLO} in legacy mode.",
     boolean: true
 
   attr_reader :chef_client_json
 
   # Get this party started
-  def run
+  def run(enforce_license: false)
     setup_signal_handlers
+    setup_application
     reconfigure
+    check_license_acceptance if enforce_license
     for_ezra if Chef::Config[:ez]
     if !Chef::Config[:solo_legacy_mode]
       Chef::Application::Client.new.run
     else
-      setup_application
       run_application
     end
   end
@@ -288,9 +292,6 @@ class Chef::Application::Solo < Chef::Application
       config_fetcher = Chef::ConfigFetcher.new(Chef::Config[:json_attribs])
       @chef_client_json = config_fetcher.fetch_json
     end
-
-    # Disable auditing for solo
-    Chef::Config[:audit_mode] = :disabled
   end
 
   def setup_application
@@ -299,8 +300,8 @@ class Chef::Application::Solo < Chef::Application
 
   def run_application
     if !Chef::Config[:client_fork] || Chef::Config[:once]
-      # Run immediately without interval sleep or splay
       begin
+        # run immediately without interval sleep, or splay
         run_chef_client(Chef::Config[:specific_recipes])
       rescue SystemExit
         raise
@@ -326,7 +327,7 @@ class Chef::Application::Solo < Chef::Application
 
   def interval_run_chef_client
     if Chef::Config[:daemonize]
-      Chef::Daemon.daemonize("chef-client")
+      Chef::Daemon.daemonize("#{Chef::Dist::CLIENT}")
     end
 
     loop do
@@ -368,9 +369,9 @@ class Chef::Application::Solo < Chef::Application
   end
 
   def unforked_interval_error_message
-    "Unforked chef-client interval runs are disabled in Chef 12." +
+    "Unforked #{Chef::Dist::CLIENT} interval runs are disabled by default." +
       "\nConfiguration settings:" +
       ("\n  interval  = #{Chef::Config[:interval]} seconds" if Chef::Config[:interval]).to_s +
-      "\nEnable chef-client interval runs by setting `:client_fork = true` in your config file or adding `--fork` to your command line options."
+      "\nEnable #{Chef::Dist::CLIENT} interval runs by setting `:client_fork = true` in your config file or adding `--fork` to your command line options."
   end
 end

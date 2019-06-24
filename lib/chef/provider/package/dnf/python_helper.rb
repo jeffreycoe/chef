@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-require "chef/mixin/which"
-require "chef/mixin/shell_out"
-require "chef/provider/package/dnf/version"
-require "timeout"
+require_relative "../../../mixin/which"
+require_relative "../../../mixin/shell_out"
+require_relative "version"
+require "timeout" unless defined?(Timeout)
 
 class Chef
   class Provider

@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "digest/sha2"
-require "chef/digester"
+require "digest/sha2" unless defined?(Digest::SHA2)
+require_relative "../digester"
 
 class Chef
   module Mixin

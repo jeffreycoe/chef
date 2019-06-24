@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-require "chef/resource/user"
+require_relative "../user"
 
 class Chef
   class Resource
@@ -25,6 +25,10 @@ class Chef
 
         provides :dscl_user
         provides :user, os: "darwin"
+
+        property :iterations, Integer,
+                  description: "macOS platform only. The number of iterations for a password with a SALTED-SHA512-PBKDF2 shadow hash.",
+                  default: 27855, desired_state: false
       end
     end
   end

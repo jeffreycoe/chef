@@ -17,6 +17,13 @@ if platform_family?("rhel", "fedora", "amazon")
   include_recipe "selinux::disabled"
 end
 
+bash "disable yum metadata caching" do
+  code <<-EOH
+    echo http_caching=packages >> /etc/yum.conf
+  EOH
+  only_if { File.exist?("/etc/yum.conf") && File.readlines("/etc/yum.conf").grep(/http_caching=packages/).empty? }
+end
+
 yum_repository "epel" do
   enabled true
   description "Extra Packages for Enterprise Linux #{node['platform_version'].to_i} - $basearch"
@@ -93,6 +100,18 @@ end
 openssl_rsa_public_key "/etc/ssl/rsakey_aes128cbc.pub" do
   private_key_path "/etc/ssl/rsakey_aes128cbc.pem"
   action :create
+end
+
+# test various archive formats in the archive_file resource
+%w{tourism.tar.gz tourism.tar.xz tourism.zip}.each do |archive|
+  cookbook_file File.join(Chef::Config[:file_cache_path], archive) do
+    source archive
+  end
+
+  archive_file archive do
+    path File.join(Chef::Config[:file_cache_path], archive)
+    extract_to File.join(Chef::Config[:file_cache_path], archive.tr(".", "_"))
+  end
 end
 
 include_recipe "::tests"

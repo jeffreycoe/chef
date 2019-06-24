@@ -16,11 +16,11 @@
 # limitations under the License.
 #
 
-require "uri"
-require "tempfile"
+require "uri" unless defined?(URI)
+require "tempfile" unless defined?(Tempfile)
 require "net/ftp"
-require "chef/provider/remote_file"
-require "chef/file_content_management/tempfile"
+require_relative "../remote_file"
+require_relative "../../file_content_management/tempfile"
 
 class Chef
   class Provider

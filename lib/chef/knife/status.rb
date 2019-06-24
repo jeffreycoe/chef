@@ -16,9 +16,10 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/knife/core/status_presenter"
-require "chef/knife/core/node_presenter"
+require_relative "../knife"
+require_relative "core/status_presenter"
+require_relative "core/node_presenter"
+require_relative "../dist"
 
 class Chef
   class Knife
@@ -26,7 +27,7 @@ class Chef
       include Knife::Core::NodeFormattingOptions
 
       deps do
-        require "chef/search/query"
+        require_relative "../search/query"
       end
 
       banner "knife status QUERY (options)"
@@ -43,7 +44,7 @@ class Chef
 
       option :hide_by_mins,
         long: "--hide-by-mins MINS",
-        description: "Hide nodes that have run chef in the last MINS minutes"
+        description: "Hide nodes that have run #{Chef::Dist::CLIENT} in the last MINS minutes"
 
       def append_to_query(term)
         @query << " AND " unless @query.empty?

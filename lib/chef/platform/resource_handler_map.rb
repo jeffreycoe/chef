@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "singleton"
-require "chef/node_map"
+require "singleton" unless defined?(Singleton)
+require_relative "../node_map"
 
 class Chef
   class Platform

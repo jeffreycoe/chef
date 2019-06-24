@@ -17,11 +17,11 @@
 # limitations under the License.
 #
 
-require "chef/resource_collection/resource_set"
-require "chef/resource_collection/resource_list"
-require "chef/resource_collection/resource_collection_serialization"
-require "chef/log"
-require "forwardable"
+require_relative "resource_collection/resource_set"
+require_relative "resource_collection/resource_list"
+require_relative "resource_collection/resource_collection_serialization"
+require_relative "log"
+require "forwardable" unless defined?(Forwardable)
 
 ##
 # ResourceCollection currently handles two tasks:
@@ -60,8 +60,9 @@ class Chef
     end
 
     def delete(key)
-      resource_list.delete(key)
-      resource_set.delete(key)
+      res = resource_set.delete(key)
+      resource_list.delete(res.to_s)
+      res
     end
 
     # @deprecated

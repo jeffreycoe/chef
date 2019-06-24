@@ -11,13 +11,25 @@ gem "chef", path: "."
 gem "ohai", git: "https://github.com/chef/ohai.git", branch: "master"
 
 gem "chef-config", path: File.expand_path("../chef-config", __FILE__) if File.exist?(File.expand_path("../chef-config", __FILE__))
+
+if File.exist?(File.expand_path("../chef-bin", __FILE__))
+  # bundling in a git checkout
+  gem "chef-bin", path: File.expand_path("../chef-bin", __FILE__)
+else
+  # bundling in omnibus
+  gem "chef-bin" # rubocop:disable Bundler/DuplicatedGem
+end
+
 gem "cheffish", "~> 14"
 
 group(:omnibus_package) do
   gem "appbundler"
   gem "rb-readline"
-  gem "inspec-core", "~> 3"
+  gem "inspec-core", "~> 4.3"
+  gem "inspec-core-bin", "~> 4.3" # need to provide the binaries for inspec
   gem "chef-vault"
+  gem "ed25519" # ed25519 ssh key support done here as it's a native gem we can't put in train
+  gem "bcrypt_pbkdf" # ed25519 ssh key support done here as it's a native gem we can't put in train
 end
 
 group(:omnibus_package, :pry) do
@@ -29,14 +41,6 @@ end
 
 group(:docgen) do
   gem "yard"
-end
-
-group(:maintenance) do
-  gem "tomlrb"
-
-  # To sync maintainers with github
-  gem "octokit"
-  gem "netrc"
 end
 
 # Everything except AIX
@@ -53,16 +57,19 @@ group(:development, :test) do
   # we pin rake as a copy of rake is installed from the ruby source
   # if you bump the ruby version you should confirm we don't end up with
   # two rake gems installed again
-  gem "rake", "<= 12.3.0"
+  gem "rake", "<= 12.3.2"
+
+  gem "rspec-core", "~> 3.5"
+  gem "rspec-mocks", "~> 3.5"
+  gem "rspec-expectations", "~> 3.5"
+  gem "rspec_junit_formatter", "~> 0.2.0"
   gem "simplecov"
   gem "webmock"
-
-  # for testing new chefstyle rules
-  gem "chefstyle", git: "https://github.com/chef/chefstyle.git", branch: "master"
 end
 
-group(:travis) do
-  gem "travis"
+group(:chefstyle) do
+  # for testing new chefstyle rules
+  gem "chefstyle", git: "https://github.com/chef/chefstyle.git", branch: "master"
 end
 
 instance_eval(ENV["GEMFILE_MOD"]) if ENV["GEMFILE_MOD"]

@@ -16,21 +16,20 @@
 # limitations under the License.
 #
 
-require "chef/mixin/shell_out"
-require "chef/knife"
+require_relative "../mixin/shell_out"
+require_relative "../knife"
 
 class Chef
   class Knife
     class Ssh < Knife
 
       deps do
-        require "net/ssh"
+        require "net/ssh" unless defined?(Net::SSH)
         require "net/ssh/multi"
         require "readline"
-        require "chef/exceptions"
-        require "chef/search/query"
-        require "chef/util/path_helper"
-        require "mixlib/shellout"
+        require_relative "../exceptions"
+        require_relative "../search/query"
+        require_relative "../util/path_helper"
       end
 
       include Chef::Mixin::ShellOut
@@ -498,7 +497,7 @@ class Chef
 
       def macterm
         begin
-          require "appscript"
+          require "appscript" unless defined?(Appscript)
         rescue LoadError
           STDERR.puts "You need the rb-appscript gem to use knife ssh macterm. `(sudo) gem install rb-appscript` to install"
           raise

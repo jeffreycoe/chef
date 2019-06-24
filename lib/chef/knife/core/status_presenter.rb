@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "chef/knife/core/text_formatter"
-require "chef/knife/core/generic_presenter"
+require_relative "text_formatter"
+require_relative "generic_presenter"
 
 class Chef
   class Knife
@@ -26,7 +26,7 @@ class Chef
       # This module may be included into a knife subcommand class to automatically
       # add configuration options used by the StatusPresenter
       module StatusFormattingOptions
-        # :nodoc:
+        # @private
         # Would prefer to do this in a rational way, but can't be done b/c of
         # Mixlib::CLI's design :(
         def self.included(includer)
@@ -48,7 +48,6 @@ class Chef
         end
       end
 
-      #==Chef::Knife::Core::StatusPresenter
       # A customized presenter for Chef::Node objects. Supports variable-length
       # output formats for displaying node data
       class StatusPresenter < GenericPresenter
@@ -101,7 +100,14 @@ class Chef
             fqdn = (node[:ec2] && node[:ec2][:public_hostname]) || node[:fqdn]
             name = node["name"] || node.name
 
-            run_list = (node["run_list"]).to_s if config[:run_list]
+            if config[:run_list]
+              if config[:long_output]
+                run_list = node.run_list.map { |rl| "#{rl.type}[#{rl.name}]" }
+              else
+                run_list = node["run_list"]
+              end
+            end
+
             line_parts = Array.new
 
             if node["ohai_time"]
@@ -129,7 +135,7 @@ class Chef
 
             line_parts << fqdn if fqdn
             line_parts << ip if ip
-            line_parts << run_list if run_list
+            line_parts << run_list.to_s if run_list
 
             if node["platform"]
               platform = node["platform"].dup
@@ -148,8 +154,8 @@ class Chef
           ui.color(key_text, :cyan)
         end
 
-        # :nodoc:
-        # TODO: this is duplicated from StatusHelper in the Webui. dedup.
+        # @private
+        # @todo this is duplicated from StatusHelper in the Webui. dedup.
         def time_difference_in_hms(unix_time)
           now = Time.now.to_i
           difference = now - unix_time.to_i

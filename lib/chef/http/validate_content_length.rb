@@ -16,8 +16,8 @@
 # limitations under the License.
 #
 
-require "pp"
-require "chef/log"
+require "pp" unless defined?(PP)
+require_relative "../log"
 
 class Chef
   class HTTP

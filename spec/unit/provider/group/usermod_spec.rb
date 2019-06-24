@@ -48,9 +48,6 @@ describe Chef::Provider::Group::Usermod do
       platforms = {
         "openbsd" => [ "-G" ],
         "netbsd" => [ "-G" ],
-        "solaris" => [ "-a", "-G" ],
-        "suse" => [ "-a", "-G" ],
-        "opensuse" => [ "-a", "-G" ],
         "smartos" => [ "-G" ],
         "omnios" => [ "-G" ],
       }

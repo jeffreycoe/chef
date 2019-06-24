@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
@@ -160,6 +160,10 @@ class Chef
       property :keep_alive, [ TrueClass, FalseClass, Hash ],
                introduced: "12.14",
                description: "Keep a job running continuously (true) or allow demand and conditions on the node to determine if the job keeps running (false)."
+
+      property :launch_events, [ Hash ],
+               introduced: "15.1",
+               description: "Specify higher-level event types to be used as launch-on-demand event sources."
 
       property :launch_only_once, [ TrueClass, FalseClass ],
                description: "Specify if a job can be run only one time. Set this value to true if a job cannot be restarted without a full machine reboot."

@@ -17,10 +17,11 @@
 # limitations under the License.
 #
 
-require "chef/util/path_helper"
-require "chef/resource"
+require_relative "../util/path_helper"
+require_relative "../resource"
 require "win32-certstore" if Chef::Platform.windows?
-require "openssl"
+require "openssl" unless defined?(OpenSSL)
+require_relative "../dist"
 
 class Chef
   class Resource
@@ -31,7 +32,7 @@ class Chef
       introduced "14.7"
 
       property :source, String,
-               description: "The source file (for create and acl_add), thumbprint (for delete and acl_add) or subject (for delete).",
+               description: "The source file (for create and acl_add), thumbprint (for delete and acl_add) or subject (for delete) if it differs from the resource block's name.",
                name_property: true
 
       property :pfx_password, String,
@@ -52,13 +53,18 @@ class Chef
                description: ""
 
       # lazy used to set default value of sensitive to true if password is set
-      property :sensitive, [ TrueClass, FalseClass ],
-               description: "Ensure that sensitive resource data is not logged by the chef-client.",
+      property :sensitive, [TrueClass, FalseClass],
+               description: "Ensure that sensitive resource data is not logged by the #{Chef::Dist::CLIENT}.",
                default: lazy { |r| r.pfx_password ? true : false }, skip_docs: true
 
       action :create do
         description "Creates or updates a certificate."
-        add_cert(OpenSSL::X509::Certificate.new(raw_source))
+
+        # Extension of the certificate
+        ext = ::File.extname(new_resource.source)
+
+        # PFX certificates contains private keys and we import them with some other aproach
+        import_certificates(fetch_cert_object(ext), (ext == ".pfx"))
       end
 
       # acl_add is a modify-if-exists operation : not idempotent
@@ -94,6 +100,8 @@ class Chef
           converge_by("Deleting certificate #{new_resource.source} from Store #{new_resource.store_name}") do
             delete_cert
           end
+        else
+          Chef::Log.debug("Certificate not found")
         end
       end
 
@@ -104,7 +112,7 @@ class Chef
         if cert_obj
           show_or_store_cert(cert_obj)
         else
-          Chef::Log.info("Certificate not found")
+          Chef::Log.debug("Certificate not found")
         end
       end
 
@@ -124,6 +132,11 @@ class Chef
           store.add(cert_obj)
         end
 
+        def add_pfx_cert
+          store = ::Win32::Certstore.open(new_resource.store_name)
+          store.add_pfx(new_resource.source, new_resource.pfx_password)
+        end
+
         def delete_cert
           store = ::Win32::Certstore.open(new_resource.store_name)
           store.delete(new_resource.source)
@@ -134,9 +147,14 @@ class Chef
           store.get(new_resource.source)
         end
 
-        def verify_cert
+        # Checks whether a certificate with the given thumbprint
+        # is already present and valid in certificate store
+        # If the certificate is not present, verify_cert returns a String: "Certificate not found"
+        # But if it is present but expired, it returns a Boolean: false
+        # Otherwise, it returns a Boolean: true
+        def verify_cert(thumbprint = new_resource.source)
           store = ::Win32::Certstore.open(new_resource.store_name)
-          store.valid?(new_resource.source)
+          store.valid?(thumbprint)
         end
 
         def show_or_store_cert(cert_obj)
@@ -215,6 +233,7 @@ class Chef
 
         def acl_script(hash)
           return "" if new_resource.private_key_acl.nil? || new_resource.private_key_acl.empty?
+
           # this PS came from http://blogs.technet.com/b/operationsguy/archive/2010/11/29/provide-access-to-private-keys-commandline-vs-powershell.aspx
           # and from https://msdn.microsoft.com/en-us/library/windows/desktop/bb204778(v=vs.85).aspx
           set_acl_script = <<-EOH
@@ -240,33 +259,74 @@ class Chef
           set_acl_script
         end
 
-        def raw_source
-          ext = ::File.extname(new_resource.source)
-          convert_pem(ext, new_resource.source)
+        # Method returns an OpenSSL::X509::Certificate object. Might also return multiple certificates if present in certificate path
+        #
+        # Based on its extension, the certificate contents are used to initialize
+        # PKCS12 (PFX), PKCS7 (P7B) objects which contains OpenSSL::X509::Certificate.
+        #
+        # @note Other then PEM, all the certificates are usually in binary format, and hence
+        #       their contents are loaded by using File.binread
+        #
+        # @param ext [String] Extension of the certificate
+        #
+        # @return [OpenSSL::X509::Certificate] Object containing certificate's attributes
+        #
+        # @raise [OpenSSL::PKCS12::PKCS12Error] When incorrect password is provided for PFX certificate
+        #
+        def fetch_cert_object(ext)
+          contents = if binary_cert?
+                       ::File.binread(new_resource.source)
+                     else
+                       ::File.read(new_resource.source)
+                     end
+
+          case ext
+          when ".pfx"
+            pfx = OpenSSL::PKCS12.new(contents, new_resource.pfx_password)
+            if pfx.ca_certs.nil?
+              pfx.certificate
+            else
+              [pfx.certificate] + pfx.ca_certs
+            end
+          when ".p7b"
+            OpenSSL::PKCS7.new(contents).certificates
+          else
+            OpenSSL::X509::Certificate.new(contents)
+          end
         end
 
-        def convert_pem(ext, source)
-          out = case ext
-                when ".crt", ".der"
-                  powershell_out("openssl x509 -text -inform DER -in #{source} -outform PEM").stdout
-                when ".cer"
-                  powershell_out("openssl x509 -text -inform DER -in #{source} -outform PEM").stdout
-                when ".pfx"
-                  powershell_out("openssl pkcs12 -in #{source} -nodes -passin pass:'#{new_resource.pfx_password}'").stdout
-                when ".p7b"
-                  powershell_out("openssl pkcs7 -print_certs -in #{source} -outform PEM").stdout
+        # @return [Boolean] Whether the certificate file is binary encoded or not
+        #
+        def binary_cert?
+          powershell_out!("file -b --mime-encoding #{new_resource.source}").stdout.strip == "binary"
+        end
+
+        # Imports the certificate object into cert store
+        #
+        # @param cert_objs [OpenSSL::X509::Certificate] Object containing certificate's attributes
+        #
+        # @param is_pfx [Boolean] true if we want to import a PFX certificate
+        #
+        def import_certificates(cert_objs, is_pfx)
+          [cert_objs].flatten.each do |cert_obj|
+            thumbprint = OpenSSL::Digest::SHA1.new(cert_obj.to_der).to_s # Fetch its thumbprint
+
+            # Need to check if return value is Boolean:true
+            # If not then the given certificate should be added in certstore
+            if verify_cert(thumbprint) == true
+              Chef::Log.debug("Certificate is already present")
+            else
+              converge_by("Adding certificate #{new_resource.source} into Store #{new_resource.store_name}") do
+                if is_pfx
+                  add_pfx_cert
+                else
+                  add_cert(cert_obj)
                 end
-          out = ::File.read(source) if out.nil? || out.empty?
-          format_raw_out(out)
-        end
-
-        def format_raw_out(out)
-          begin_cert = "-----BEGIN CERTIFICATE-----"
-          end_cert = "-----END CERTIFICATE-----"
-          begin_cert + out[/#{begin_cert}(.*?)#{end_cert}/m, 1] + end_cert
+              end
+            end
+          end
         end
       end
-
     end
   end
 end

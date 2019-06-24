@@ -1,7 +1,7 @@
 #--
 # Author:: Adam Jacob (<adam@chef.io>)
 # Author:: Christopher Walters (<cw@chef.io>)
-# Copyright:: Copyright 2008-2016 Chef Software, Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +17,14 @@
 # limitations under the License.
 #
 
-require "chef/dsl/platform_introspection"
-require "chef/mixin/powershell_exec"
-require "chef/mixin/powershell_out"
-require "chef/mixin/shell_out"
+require_relative "platform_introspection"
+require_relative "data_query"
+require_relative "registry_helper"
+require_relative "powershell"
+require_relative "../mixin/powershell_exec"
+require_relative "../mixin/powershell_out"
+require_relative "../mixin/shell_out"
+require_relative "../mixin/lazy_module_include"
 
 class Chef
   module DSL
@@ -44,16 +48,13 @@ class Chef
     #
     module Universal
       include Chef::DSL::PlatformIntrospection
+      include Chef::DSL::DataQuery
+      include Chef::DSL::RegistryHelper
+      include Chef::DSL::Powershell
       include Chef::Mixin::PowershellExec
       include Chef::Mixin::PowershellOut
       include Chef::Mixin::ShellOut
-
-      def tagged?(*tags)
-        tags.each do |tag|
-          return false unless run_context.node.tags.include?(tag)
-        end
-        true
-      end
+      extend Chef::Mixin::LazyModuleInclude
     end
   end
 end

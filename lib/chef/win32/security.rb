@@ -16,13 +16,13 @@
 # limitations under the License.
 #
 
-require "chef/win32/api/security"
-require "chef/win32/error"
-require "chef/win32/memory"
-require "chef/win32/process"
-require "chef/win32/unicode"
-require "chef/win32/security/token"
-require "chef/mixin/wide_string"
+require_relative "api/security"
+require_relative "error"
+require_relative "memory"
+require_relative "process"
+require_relative "unicode"
+require_relative "security/token"
+require_relative "../mixin/wide_string"
 
 class Chef
   module ReservedNames::Win32
@@ -404,7 +404,7 @@ class Chef
         system_name = system_name.to_wstring if system_name
         if LookupAccountNameW(system_name, name.to_wstring, nil, sid_size, nil, referenced_domain_name_size, nil)
           raise "Expected ERROR_INSUFFICIENT_BUFFER from LookupAccountName, and got no error!"
-        elsif FFI::LastError.error != ERROR_INSUFFICIENT_BUFFER
+        elsif !([NO_ERROR, ERROR_INSUFFICIENT_BUFFER].include?(FFI::LastError.error))
           Chef::ReservedNames::Win32::Error.raise!
         end
 
@@ -691,8 +691,8 @@ class Chef
   end
 end
 
-require "chef/win32/security/ace"
-require "chef/win32/security/acl"
-require "chef/win32/security/securable_object"
-require "chef/win32/security/security_descriptor"
-require "chef/win32/security/sid"
+require_relative "security/ace"
+require_relative "security/acl"
+require_relative "security/securable_object"
+require_relative "security/security_descriptor"
+require_relative "security/sid"

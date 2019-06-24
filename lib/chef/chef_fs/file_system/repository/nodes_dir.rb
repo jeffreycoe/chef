@@ -17,10 +17,10 @@
 # limitations under the License.
 #
 
-require "chef/chef_fs/file_system/repository/node"
-require "chef/chef_fs/file_system/repository/directory"
-require "chef/chef_fs/file_system/exceptions"
-require "chef/win32/security" if Chef::Platform.windows?
+require_relative "node"
+require_relative "directory"
+require_relative "../exceptions"
+require_relative "../../../win32/security" if Chef::Platform.windows?
 
 class Chef
   module ChefFS

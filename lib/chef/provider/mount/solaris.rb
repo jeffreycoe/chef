@@ -18,9 +18,9 @@
 # limitations under the License.
 #
 
-require "chef/provider/mount"
-require "chef/log"
-require "forwardable"
+require_relative "../mount"
+require_relative "../../log"
+require "forwardable" unless defined?(Forwardable)
 
 class Chef
   class Provider

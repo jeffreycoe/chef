@@ -17,13 +17,16 @@
 # limitations under the License.
 #
 
-require "chef/resource"
-require "chef/provider/ruby_block"
+require_relative "../resource"
+require_relative "../provider/ruby_block"
+require_relative "../dist"
 
 class Chef
   class Resource
     class RubyBlock < Chef::Resource
-      description "Use the ruby_block resource to execute Ruby code during a chef-client run."\
+      provides :ruby_block, target_mode: true
+
+      description "Use the ruby_block resource to execute Ruby code during a #{Chef::Dist::CLIENT} run."\
                   " Ruby code in the ruby_block resource is evaluated with other resources during"\
                   " convergence, whereas Ruby code outside of a ruby_block resource is evaluated"\
                   " before other resources, as the recipe is compiled."

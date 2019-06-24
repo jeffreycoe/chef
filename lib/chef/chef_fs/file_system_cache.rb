@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 
-require "singleton"
-require "chef/client"
+require "singleton" unless defined?(Singleton)
+require_relative "../client"
 
 class Chef
   module ChefFS

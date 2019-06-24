@@ -19,19 +19,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "mixlib/config"
-require "pathname"
+require "mixlib/config" unless defined?(Mixlib::Config)
+require "pathname" unless defined?(Pathname)
 
-require "chef-config/fips"
-require "chef-config/logger"
-require "chef-config/windows"
-require "chef-config/path_helper"
-require "chef-config/mixin/fuzzy_hostname_matcher"
+require_relative "fips"
+require_relative "logger"
+require_relative "windows"
+require_relative "path_helper"
+require_relative "mixin/fuzzy_hostname_matcher"
 
-require "mixlib/shellout"
-require "uri"
-require "addressable/uri"
-require "openssl"
+require "mixlib/shellout" unless defined?(Mixlib::ShellOut::DEFAULT_READ_TIMEOUT)
+require "uri" unless defined?(URI)
+require "addressable/uri" unless defined?(Addressable::URI)
+require "openssl" unless defined?(OpenSSL)
 require "yaml"
 
 module ChefConfig
@@ -122,7 +122,7 @@ module ChefConfig
       if config_file
         PathHelper.dirname(PathHelper.canonical_path(config_file, false))
       else
-        PathHelper.join(user_home, ".chef", "")
+        PathHelper.join(PathHelper.cleanpath(user_home), ".chef", "")
       end
     end
 
@@ -293,10 +293,11 @@ module ChefConfig
         # the cache path.
         unless path_accessible?(primary_cache_path) || path_accessible?(primary_cache_root)
           secondary_cache_path = PathHelper.join(user_home, ".chef")
+          secondary_cache_path = target_mode? ? "#{secondary_cache_path}/#{target_mode.host}" : secondary_cache_path
           ChefConfig.logger.trace("Unable to access cache at #{primary_cache_path}. Switching cache to #{secondary_cache_path}")
           secondary_cache_path
         else
-          primary_cache_path
+          target_mode? ? "#{primary_cache_path}/#{target_mode.host}" : primary_cache_path
         end
       end
     end
@@ -378,6 +379,11 @@ module ChefConfig
     default :diff_disabled,           false
     default :diff_filesize_threshold, 10000000
     default :diff_output_threshold,   1000000
+
+    # This is true for "local mode" which uses a chef-zero server listening on
+    # localhost one way or another.  This is true for both `chef-solo` (without
+    # the --legacy-mode flag) or `chef-client -z` methods of starting a client run.
+    #
     default :local_mode, false
 
     # Configures the mode of operation for ChefFS, which is applied to the
@@ -430,6 +436,22 @@ module ChefConfig
       # * Chef 11 mode doesn't expose RBAC objects
       default :osc_compat, false
     end
+
+    # RFCxxx Target Mode support, value is the name of a remote device to Chef against
+    # --target exists as a shortcut to enabling target_mode and setting the host
+    configurable(:target)
+
+    config_context :target_mode do
+      config_strict_mode false # we don't want to have to add all train configuration keys here
+      default :enabled, false
+      default :protocol, "ssh"
+      # typical additional keys: host, user, password
+    end
+
+    def self.target_mode?
+      target_mode.enabled
+    end
+
     default :chef_server_url, "https://localhost:443"
 
     default(:chef_server_root) do
@@ -445,9 +467,29 @@ module ChefConfig
     end
 
     default :rest_timeout, 300
+
+    # This solo setting is now almost entirely useless.  It is set to true if chef-solo was
+    # invoked that way from the command-line (i.e. from Application::Solo as opposed to
+    # Application::Client).  The more useful information is contained in the :solo_legacy_mode
+    # vs the :local_mode flags which will be set to true or false depending on how solo was
+    # invoked and actually change more of the behavior.  There might be slight differences in
+    # the behavior of :local_mode due to the behavioral differences in Application::Solo vs.
+    # Application::Client and `chef-solo` vs `chef-client -z`, but checking this value and
+    # switching based on it is almost certainly doing the wrong thing and papering over
+    # bugs that should be fixed in one or the other class, and will be brittle and destined
+    # to break in the future (and not necessarily on a major version bump). Checking this value
+    # is also not sufficent to determine if we are not running against a server since this can
+    # be unset but :local_mode may be set.  It would be accurate to check both :solo and :local_mode
+    # to determine if we're not running against a server, but the more semantically accurate test
+    # is going to be combining :solo_legacy_mode and :local_mode.
+    #
+    # TL;DR: `if Chef::Config[:solo]` is almost certainly buggy code, you should use:
+    #        `if Chef::Config[:local_mode] || Chef::Config[:solo_legacy_mode]`
+    #
+    # @api private
     default :solo, false
 
-    # Are we running in old Chef Solo legacy mode?
+    # This is true for old chef-solo legacy mode without any chef-zero server (chef-solo --legacy-mode)
     default :solo_legacy_mode, false
 
     default :splay, nil
@@ -457,14 +499,6 @@ module ChefConfig
     default :ez, false
     default :enable_reporting, true
     default :enable_reporting_url_fatals, false
-    # Possible values for :audit_mode
-    # :enabled, :disabled, :audit_only,
-    #
-    # TODO: 11 Dec 2014: Currently audit-mode is an experimental feature
-    # and is disabled by default. When users choose to enable audit-mode,
-    # a warning is issued in application/client#reconfigure.
-    # This can be removed when audit-mode is enabled by default.
-    default :audit_mode, :disabled
 
     # Chef only needs ohai to run the hostname plugin for the most basic
     # functionality. If the rest of the ohai plugins are not needed (like in
@@ -608,7 +642,15 @@ module ChefConfig
     # `node_name` of the client.
     #
     # If chef-zero is enabled, this defaults to nil (no authentication).
-    default(:client_key) { chef_zero.enabled ? nil : platform_specific_path("/etc/chef/client.pem") }
+    default(:client_key) do
+      if chef_zero.enabled
+        nil
+      elsif target_mode?
+        platform_specific_path("/etc/chef/#{target_mode.host}/client.pem")
+      else
+        platform_specific_path("/etc/chef/client.pem")
+      end
+    end
 
     # A credentials file may contain a complete client key, rather than the path
     # to one.
@@ -628,7 +670,9 @@ module ChefConfig
 
     # This secret is used to decrypt encrypted data bag items.
     default(:encrypted_data_bag_secret) do
-      if File.exist?(platform_specific_path("/etc/chef/encrypted_data_bag_secret"))
+      if target_mode? && File.exist?(platform_specific_path("/etc/chef/#{target_mode.host}/encrypted_data_bag_secret"))
+        platform_specific_path("/etc/chef/#{target_mode.host}/encrypted_data_bag_secret")
+      elsif File.exist?(platform_specific_path("/etc/chef/encrypted_data_bag_secret"))
         platform_specific_path("/etc/chef/encrypted_data_bag_secret")
       else
         nil
@@ -919,7 +963,7 @@ module ChefConfig
       # data collector will not run.
       # Ex: http://my-data-collector.mycompany.com/ingest
       default(:server_url) do
-        if config_parent.solo || config_parent.local_mode
+        if config_parent.solo_legacy_mode || config_parent.local_mode
           nil
         else
           File.join(config_parent.chef_server_url, "/data-collector")
@@ -950,7 +994,7 @@ module ChefConfig
       # generated by the DataCollector when Chef is run in Solo mode. This
       # allows users to associate their Solo nodes with faux organizations
       # without the nodes being connected to an actual Chef Server.
-      default :organization, nil
+      default :organization, "chef_solo"
     end
 
     configurable(:http_proxy)

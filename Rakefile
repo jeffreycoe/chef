@@ -1,7 +1,7 @@
 #
 # Author:: Adam Jacob (<adam@chef.io>)
 # Author:: Daniel DeLeo (<dan@chef.io>)
-# Copyright:: Copyright 2008-2018, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +18,10 @@
 #
 
 require_relative "tasks/rspec"
-require_relative "tasks/maintainers"
 require_relative "tasks/dependencies"
 require_relative "tasks/announce"
+
+ENV["CHEF_LICENSE"] = "accept-no-persist"
 
 # hack the chef-config install to run before the traditional install task
 task :super_install do
@@ -34,6 +35,13 @@ task install: :super_install
 # make sure we build the correct gemspec on windows
 gemspec = Gem.win_platform? ? "chef-universal-mingw32" : "chef"
 Bundler::GemHelper.install_tasks name: gemspec
+
+# this gets appended to the normal bundler install helper
+task :install do
+  chef_bin_path = ::File.join(::File.dirname(__FILE__), "chef-bin")
+  Dir.chdir(chef_bin_path)
+  sh("rake install:force")
+end
 
 task :pedant, :chef_zero_spec
 

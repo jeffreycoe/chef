@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 
-require "chef/provider/package"
-require "chef/resource/snap_package"
-require "chef/mixin/shell_out"
-require "socket"
+require_relative "../package"
+require_relative "../../resource/snap_package"
+require_relative "../../mixin/shell_out"
+require "socket" unless defined?(Socket)
 require "json"
 
 class Chef

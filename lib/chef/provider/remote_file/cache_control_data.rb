@@ -19,11 +19,11 @@
 # limitations under the License.
 #
 
-require "stringio"
-require "chef/file_cache"
-require "chef/json_compat"
-require "chef/digester"
-require "chef/exceptions"
+require "stringio" unless defined?(StringIO)
+require_relative "../../file_cache"
+require_relative "../../json_compat"
+require_relative "../../digester"
+require_relative "../../exceptions"
 
 class Chef
   class Provider

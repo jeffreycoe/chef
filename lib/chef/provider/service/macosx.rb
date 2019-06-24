@@ -16,12 +16,12 @@
 # limitations under the License.
 #
 
-require "etc"
-require "rexml/document"
-require "chef/resource/service"
-require "chef/resource/macosx_service"
-require "chef/provider/service/simple"
-require "chef/util/path_helper"
+require "etc" unless defined?(Etc)
+require "rexml/document" unless defined?(REXML::Document)
+require_relative "../../resource/service"
+require_relative "../../resource/macosx_service"
+require_relative "simple"
+require_relative "../../util/path_helper"
 
 class Chef
   class Provider

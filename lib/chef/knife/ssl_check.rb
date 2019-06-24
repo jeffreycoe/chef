@@ -16,20 +16,21 @@
 # limitations under the License.
 #
 
-require "chef/knife"
-require "chef/config"
+require_relative "../knife"
+require_relative "../config"
+require_relative "../dist"
 
 class Chef
   class Knife
     class SslCheck < Chef::Knife
 
       deps do
-        require "pp"
-        require "socket"
-        require "uri"
-        require "chef/http/ssl_policies"
-        require "openssl"
-        require "chef/mixin/proxified_socket"
+        require "pp" unless defined?(PP)
+        require "socket" unless defined?(Socket)
+        require "uri" unless defined?(URI)
+        require_relative "../http/ssl_policies"
+        require "openssl" unless defined?(OpenSSL)
+        require_relative "../mixin/proxified_socket"
         include Chef::Mixin::ProxifiedSocket
       end
 
@@ -233,7 +234,7 @@ class Chef
       end
 
       def debug_chef_ssl_config
-        ui.err "Chef SSL Configuration:"
+        ui.err "#{Chef::Dist::PRODUCT} SSL Configuration:"
         ui.err "* ssl_ca_path: #{configuration.ssl_ca_path.inspect}"
         ui.err "* ssl_ca_file: #{configuration.ssl_ca_file.inspect}"
         ui.err "* trusted_certs_dir: #{configuration.trusted_certs_dir.inspect}"

@@ -15,8 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require "chef/knife/bootstrap"
-
 class Chef
   class Knife
     class Bootstrap < Knife
@@ -142,7 +140,7 @@ class Chef
         def require_chef_vault!
           @require_chef_vault ||=
             begin
-              error_message = "Knife bootstrap requires version 2.6.0 or higher of the chef-vault gem to configure chef vault items"
+              error_message = "Knife bootstrap requires version 2.6.0 or higher of the chef-vault gem to configure vault items"
               require "chef-vault"
               if Gem::Version.new(ChefVault::VERSION) < Gem::Version.new("2.6.0")
                 raise error_message

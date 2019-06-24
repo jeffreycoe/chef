@@ -15,6 +15,7 @@ configuration:
 environment:
   matrix:
     - ruby_version: "25-x64"
+    - ruby_version: "26-x64"
 
 clone_folder: c:\projects\chef
 clone_depth: 1
@@ -24,8 +25,6 @@ skip_commits:
   message: /Bump version to [0-9.]+ by Chef Expeditor/
   # if ONLY the files listed below are changed in a commit, skip
   files:
-    - MAINTAINERS.md
-    - MAINTAINERS.toml
     - CHANGELOG.md
     - RELEASE_NOTES.md
 
@@ -34,7 +33,6 @@ branches:
   only:
     - master
     - chef-14
-    - chef-13
 
 install:
   - systeminfo
@@ -43,10 +41,11 @@ install:
   - echo %PATH%
   - appveyor DownloadFile http://curl.haxx.se/ca/cacert.pem -FileName C:\cacert.pem
   - set SSL_CERT_FILE=C:\cacert.pem
-  - SET BUNDLE_WITHOUT=server:docgen:maintenance:pry:travis:integration:ci
+  - SET BUNDLE_WITHOUT=server:docgen:pry:integration:ci
   - bundle config --local path vendor/bundle # use the cache we define above
   - bundle install || bundle install || bundle install
   - SET SPEC_OPTS=--format progress
+  - SET CHEF_LICENSE="accept-no-persist"
 
 build: off
 

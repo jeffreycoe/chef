@@ -16,12 +16,12 @@
 # limitations under the License.
 #
 
-require "chef/mixin/shell_out"
-require "rexml/document"
+require_relative "../mixin/shell_out"
+require "rexml/document" unless defined?(REXML::Document)
 require "iso8601" if Chef::Platform.windows?
-require "chef/mixin/powershell_out"
-require "chef/provider"
-require "chef/util/path_helper"
+require_relative "../mixin/powershell_out"
+require_relative "../provider"
+require_relative "../util/path_helper"
 require "win32/taskscheduler" if Chef::Platform.windows?
 
 class Chef
@@ -116,9 +116,8 @@ class Chef
         end
 
         def action_create
-          if new_resource.command && new_resource.command.split.size > 1
-            set_command_and_arguments
-          end
+          set_command_and_arguments if new_resource.command
+
           if current_resource.exists
             logger.trace "#{new_resource} task exist."
             unless (task_needs_update?(current_resource.task)) || (new_resource.force)
@@ -335,7 +334,8 @@ class Chef
             task.parameters != new_resource.command_arguments.to_s ||
             task.principals[:run_level] != run_level ||
             task.settings[:disallow_start_if_on_batteries] != new_resource.disallow_start_if_on_batteries ||
-            task.settings[:stop_if_going_on_batteries] != new_resource.stop_if_going_on_batteries)
+            task.settings[:stop_if_going_on_batteries] != new_resource.stop_if_going_on_batteries ||
+            task.settings[:start_when_available] != new_resource.start_when_available)
           else
             current_task_trigger = task.trigger(0)
             new_task_trigger = trigger
@@ -361,7 +361,8 @@ class Chef
                 task.principals[:run_level] != run_level ||
                 PRIORITY[task.priority] != new_resource.priority ||
                 task.settings[:disallow_start_if_on_batteries] != new_resource.disallow_start_if_on_batteries ||
-                task.settings[:stop_if_going_on_batteries] != new_resource.stop_if_going_on_batteries
+                task.settings[:stop_if_going_on_batteries] != new_resource.stop_if_going_on_batteries ||
+                task.settings[:start_when_available] != new_resource.start_when_available
               if trigger_type == TaskScheduler::MONTHLYDATE
                 flag = true if current_task_trigger[:run_on_last_day_of_month] != new_task_trigger[:run_on_last_day_of_month]
               end
@@ -561,12 +562,13 @@ class Chef
           settings[:priority] = new_resource.priority
           settings[:disallow_start_if_on_batteries] = new_resource.disallow_start_if_on_batteries
           settings[:stop_if_going_on_batteries] = new_resource.stop_if_going_on_batteries
+          settings[:start_when_available] = new_resource.start_when_available
           settings
         end
 
         def principal_settings
           settings = {}
-          settings [:run_level] = run_level
+          settings[:run_level] = run_level
           settings[:logon_type] = logon_type
           settings
         end

@@ -1,4 +1,3 @@
-#
 # Author:: Adam Jacob (<adam@chef.io>)
 # Author:: AJ Christensen (<aj@chef.io>)
 # Author:: Seth Falcon (<seth@chef.io>)
@@ -18,15 +17,15 @@
 # limitations under the License.
 #
 
-require "chef/exceptions"
-require "chef/mash"
-require "chef/mixin/from_file"
-require "chef/mixin/params_validate"
-require "chef/log"
-require "chef/version_class"
-require "chef/version_constraint"
-require "chef/version_constraint/platform"
-require "chef/json_compat"
+require_relative "../exceptions"
+require_relative "../mash"
+require_relative "../mixin/from_file"
+require_relative "../mixin/params_validate"
+require_relative "../log"
+require_relative "../version_class"
+require_relative "../version_constraint"
+require_relative "../version_constraint/platform"
+require_relative "../json_compat"
 
 class Chef
   class Cookbook
@@ -45,7 +44,6 @@ class Chef
       PLATFORMS              = "platforms".freeze
       DEPENDENCIES           = "dependencies".freeze
       PROVIDING              = "providing".freeze
-      ATTRIBUTES             = "attributes".freeze
       RECIPES                = "recipes".freeze
       VERSION                = "version".freeze
       SOURCE_URL             = "source_url".freeze
@@ -57,9 +55,8 @@ class Chef
 
       COMPARISON_FIELDS = [ :name, :description, :long_description, :maintainer,
                             :maintainer_email, :license, :platforms, :dependencies,
-                            :providing, :attributes, :recipes, :version,
-                            :source_url, :issues_url, :privacy, :chef_versions, :ohai_versions,
-                            :gems ].freeze
+                            :providing, :recipes, :version, :source_url, :issues_url,
+                            :privacy, :chef_versions, :ohai_versions, :gems ].freeze
 
       VERSION_CONSTRAINTS = { depends: DEPENDENCIES,
                               provides: PROVIDING,
@@ -72,7 +69,6 @@ class Chef
       attr_reader :platforms
       attr_reader :dependencies
       attr_reader :providing
-      attr_reader :attributes
       attr_reader :recipes
 
       # @return [Array<Gem::Dependency>] Array of supported Chef versions
@@ -105,7 +101,6 @@ class Chef
         @platforms = Mash.new
         @dependencies = Mash.new
         @providing = Mash.new
-        @attributes = Mash.new
         @recipes = Mash.new
         @version = Version.new("0.0.0")
         @source_url = ""
@@ -386,51 +381,6 @@ class Chef
         end
       end
 
-      # Adds an attribute that a user needs to configure for this cookbook. Takes
-      # a name (with the / notation for a nested attribute), followed by any of
-      # these options
-      #
-      #   display_name<String>:: What a UI should show for this attribute
-      #   description<String>:: A hint as to what this attr is for
-      #   choice<Array>:: An array of choices to present to the user.
-      #   calculated<Boolean>:: If true, the default value is calculated by the recipe and cannot be displayed.
-      #   type<String>:: "string" or "array" - default is "string"  ("hash" is supported for backwards compatibility)
-      #   required<String>:: Whether this attr is 'required', 'recommended' or 'optional' - default 'optional' (true/false values also supported for backwards compatibility)
-      #   recipes<Array>:: An array of recipes which need this attr set.
-      #   default<String>,<Array>,<Hash>:: The default value
-      #
-      # === Parameters
-      # name<String>:: The name of the attribute ('foo', or 'apache2/log_dir')
-      # options<Hash>:: The description of the options
-      #
-      # === Returns
-      # options<Hash>:: Returns the current options hash
-      def attribute(name, options)
-        validate(
-          options,
-          {
-            display_name: { kind_of: String },
-            description: { kind_of: String },
-            choice: { kind_of: [ Array ], default: [] },
-            calculated: { equal_to: [ true, false ], default: false },
-            type: { equal_to: %w{string array hash symbol boolean numeric}, default: "string" },
-            required: { equal_to: [ "required", "recommended", "optional", true, false ], default: "optional" },
-            recipes: { kind_of: [ Array ], default: [] },
-            default: { kind_of: [ String, Array, Hash, Symbol, Numeric, TrueClass, FalseClass ] },
-            source_url: { kind_of: String },
-            issues_url: { kind_of: String },
-            privacy: { kind_of: [ TrueClass, FalseClass ] },
-          }
-        )
-        options[:required] = remap_required_attribute(options[:required]) unless options[:required].nil?
-        validate_choice_array(options)
-        validate_calculated_default_rule(options)
-        validate_choice_default_rule(options)
-
-        @attributes[name] = options
-        @attributes[name]
-      end
-
       # Convert an Array of Gem::Dependency objects (chef_version/ohai_version) to an Array.
       #
       # Gem::Dependencey#to_s is not useful, and there is no #to_json defined on it or its component
@@ -476,7 +426,6 @@ class Chef
           PLATFORMS => platforms,
           DEPENDENCIES => dependencies,
           PROVIDING => providing,
-          ATTRIBUTES => attributes,
           RECIPES => recipes,
           VERSION => version,
           SOURCE_URL => source_url,
@@ -510,7 +459,6 @@ class Chef
         @platforms                    = o[PLATFORMS] if o.key?(PLATFORMS)
         @dependencies                 = handle_deprecated_constraints(o[DEPENDENCIES]) if o.key?(DEPENDENCIES)
         @providing                    = o[PROVIDING] if o.key?(PROVIDING)
-        @attributes                   = o[ATTRIBUTES] if o.key?(ATTRIBUTES)
         @recipes                      = o[RECIPES] if o.key?(RECIPES)
         @version                      = o[VERSION] if o.key?(VERSION)
         @source_url                   = o[SOURCE_URL] if o.key?(SOURCE_URL)

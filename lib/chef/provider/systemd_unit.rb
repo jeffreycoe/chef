@@ -16,13 +16,13 @@
 # limitations under the License.
 #
 
-require "chef/provider"
-require "chef/mixin/which"
-require "chef/mixin/shell_out"
-require "chef/resource/file"
-require "chef/resource/file/verification/systemd_unit"
+require_relative "../provider"
+require_relative "../mixin/which"
+require_relative "../mixin/shell_out"
+require_relative "../resource/file"
+require_relative "../resource/file/verification/systemd_unit"
 require "iniparse"
-require "shellwords"
+require "shellwords" unless defined?(Shellwords)
 
 class Chef
   class Provider

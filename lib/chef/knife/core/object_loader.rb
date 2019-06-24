@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-require "ffi_yajl"
-require "chef/util/path_helper"
-require "chef/data_bag_item"
+require "ffi_yajl" unless defined?(FFI_Yajl)
+require_relative "../../util/path_helper"
+require_relative "../../data_bag_item"
 
 class Chef
   class Knife

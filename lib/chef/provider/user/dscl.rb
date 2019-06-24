@@ -16,11 +16,12 @@
 # limitations under the License.
 #
 
-require "chef/mixin/shell_out"
-require "chef/provider/user"
-require "openssl"
+require_relative "../../mixin/shell_out"
+require_relative "../user"
+require_relative "../../resource/user/dscl_user"
+require "openssl" unless defined?(OpenSSL)
 require "plist"
-require "chef/util/path_helper"
+require_relative "../../util/path_helper"
 
 class Chef
   class Provider
@@ -99,7 +100,7 @@ in 'password', with the associated 'salt' and 'iterations'.")
         end
 
         def load_current_resource
-          @current_resource = Chef::Resource::User.new(new_resource.username)
+          @current_resource = Chef::Resource::User::DsclUser.new(new_resource.username)
           current_resource.username(new_resource.username)
 
           @user_info = read_user_info

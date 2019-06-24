@@ -16,35 +16,33 @@ Gem::Specification.new do |s|
   s.required_ruby_version = ">= 2.5.0"
 
   s.add_dependency "chef-config", "= #{Chef::VERSION}"
+  s.add_dependency "train-core", "~> 2.0", ">= 2.0.12"
 
-  s.add_dependency "mixlib-cli", "~> 1.7"
-  s.add_dependency "mixlib-log", "~> 2.0", ">= 2.0.3"
+  s.add_dependency "license-acceptance", "~> 1.0", ">= 1.0.5"
+  s.add_dependency "mixlib-cli", ">= 2.1.1", "< 3.0"
+  s.add_dependency "mixlib-log", ">= 2.0.3", "< 4.0"
   s.add_dependency "mixlib-authentication", "~> 2.1"
-  s.add_dependency "mixlib-shellout", "~> 2.4"
-  s.add_dependency "mixlib-archive", "~> 0.4"
+  s.add_dependency "mixlib-shellout", ">= 2.4", "< 4.0"
+  s.add_dependency "mixlib-archive", ">= 0.4", "< 2.0"
   s.add_dependency "ohai", "~> 15.0"
 
   s.add_dependency "ffi", "~> 1.9", ">= 1.9.25"
   s.add_dependency "ffi-yajl", "~> 2.2"
-  s.add_dependency "net-ssh", "~> 4.2"
+  s.add_dependency "net-ssh", ">= 4.2", "< 6"
   s.add_dependency "net-ssh-multi", "~> 1.2", ">= 1.2.1"
   s.add_dependency "net-sftp", "~> 2.1", ">= 2.1.2"
-  s.add_dependency "highline", "~> 1.6", ">= 1.6.9"
+  s.add_dependency "ed25519", "~> 1.2" # ed25519 ssh key support
+  s.add_dependency "bcrypt_pbkdf", "~> 1.0" # ed25519 ssh key support
+  s.add_dependency "highline", ">= 1.6.9", "< 2"
+  s.add_dependency "tty-screen", "~> 0.6" # knife list
   s.add_dependency "erubis", "~> 2.7"
   s.add_dependency "diff-lcs", "~> 1.2", ">= 1.2.4"
-
+  s.add_dependency "ffi-libarchive"
   s.add_dependency "chef-zero", ">= 14.0.11"
 
   s.add_dependency "plist", "~> 3.2"
   s.add_dependency "iniparse", "~> 1.4"
   s.add_dependency "addressable"
-
-  # Audit mode requires these, so they are non-developmental dependencies now
-  %w{rspec-core rspec-expectations rspec-mocks}.each { |gem| s.add_dependency gem, "~> 3.5" }
-  s.add_dependency "rspec_junit_formatter", "~> 0.2.0"
-  s.add_dependency "serverspec", "~> 2.7"
-  s.add_dependency "specinfra", "~> 2.10"
-
   s.add_dependency "syslog-logger", "~> 1.6"
   s.add_dependency "uuidtools", "~> 2.1.5"
 
@@ -55,7 +53,7 @@ Gem::Specification.new do |s|
   s.add_dependency "bundler", ">= 1.10"
 
   s.bindir       = "bin"
-  s.executables  = %w{ chef-client chef-solo knife chef-shell chef-apply chef-resource-inspector }
+  s.executables  = %w{ knife }
 
   s.require_paths = %w{ lib }
   s.files = %w{Gemfile Rakefile LICENSE README.md} + Dir.glob("{lib,tasks,spec}/**/*", File::FNM_DOTMATCH).reject { |f| File.directory?(f) } + Dir.glob("*.gemspec")

@@ -2,7 +2,7 @@
 # Author:: Adam Jacob (<adam@chef.io>)
 # Author:: Christopher Walters (<cw@chef.io>)
 # Author:: Tim Hinderliter (<tim@chef.io>)
-# Copyright:: Copyright 2008-2017, Chef Software Inc.
+# Copyright:: Copyright 2008-2019, Chef Software Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,15 +17,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require "chef/resource_collection"
-require "chef/cookbook_version"
-require "chef/node"
-require "chef/role"
-require "chef/log"
-require "chef/recipe"
-require "chef/run_context/cookbook_compiler"
-require "chef/event_dispatch/events_output_stream"
-require "forwardable"
+require_relative "resource_collection"
+require_relative "cookbook_version"
+require_relative "node"
+require_relative "role"
+require_relative "log"
+require_relative "recipe"
+require_relative "run_context/cookbook_compiler"
+require_relative "event_dispatch/events_output_stream"
+require_relative "train_transport"
+require "forwardable" unless defined?(Forwardable)
 
 class Chef
 
@@ -34,6 +35,20 @@ class Chef
     #
     # Global state
     #
+
+    # Common rest object for using to talk to the Chef Server, this strictly 'validates' utf8
+    # and will throw.  (will be nil on solo-legacy runs)
+    #
+    # @return [Chef::ServerAPI]
+    #
+    attr_accessor :rest
+
+    # Common rest object for using to talk to the Chef Server, this has utf8 sanitization turned
+    # on and will replace invalid utf8 with valid characters.  (will be nil on solo-legacy runs)
+    #
+    # @return [Chef::ServerAPI]
+    #
+    attr_accessor :rest_clean
 
     #
     # The node for this run
@@ -47,7 +62,7 @@ class Chef
     #
     # @return [Chef::CookbookCollection]
     #
-    attr_reader :cookbook_collection
+    attr_accessor :cookbook_collection
 
     #
     # Resource Definitions for this run. Populated when the files in
@@ -62,7 +77,7 @@ class Chef
     #
     # @return [Chef::EventDispatch::Dispatcher]
     #
-    attr_reader :events
+    attr_accessor :events
 
     #
     # Hash of factoids for a reboot request.
@@ -104,11 +119,7 @@ class Chef
     #
     attr_reader :resource_collection
 
-    #
-    # The list of control groups to execute during the audit phase
-    #
-    attr_reader :audits
-
+    attr_accessor :action_collection
     #
     # Pointer back to the Chef::Runner that created this
     #
@@ -169,15 +180,11 @@ class Chef
     # @param events [EventDispatch::Dispatcher] The event dispatcher for this
     #   run.
     #
-    def initialize(node, cookbook_collection, events, logger = nil)
-      @node = node
-      @cookbook_collection = cookbook_collection
+    def initialize(node = nil, cookbook_collection = {}, events = nil, logger = nil)
       @events = events
       @logger = logger || Chef::Log.with_child
-
-      node.run_context = self
-      node.set_cookbook_attribute
-
+      @cookbook_collection = cookbook_collection
+      self.node = node if node
       @definitions = Hash.new
       @loaded_recipes_hash = {}
       @loaded_attributes_hash = {}
@@ -186,6 +193,12 @@ class Chef
       @delayed_actions = []
 
       initialize_child_state
+    end
+
+    def node=(node)
+      @node = node
+      node.run_context = self
+      node.set_cookbook_attribute
     end
 
     #
@@ -203,7 +216,6 @@ class Chef
     # Initialize state that applies to both Chef::RunContext and Chef::ChildRunContext
     #
     def initialize_child_state
-      @audits = {}
       @resource_collection = Chef::ResourceCollection.new(self)
       @before_notification_collection = Hash.new { |h, k| h[k] = [] }
       @immediate_notification_collection = Hash.new { |h, k| h[k] = [] }
@@ -579,6 +591,22 @@ class Chef
       reboot_info.size > 0
     end
 
+    # Remote transport from Train
+    #
+    # @return [Train::Plugins::Transport] The child class for our train transport.
+    #
+    def transport
+      @transport ||= Chef::TrainTransport.build_transport(logger)
+    end
+
+    # Remote connection object from Train
+    #
+    # @return [Train::Plugins::Transport::BaseConnection]
+    #
+    def transport_connection
+      @transport_connection ||= transport.connection
+    end
+
     #
     # Create a child RunContext.
     #
@@ -603,12 +631,16 @@ class Chef
     class ChildRunContext < RunContext
       extend Forwardable
       def_delegators :parent_run_context, *%w{
+        action_collection
+        action_collection=
         cancel_reboot
         config
         cookbook_collection
+        cookbook_collection=
         cookbook_compiler
         definitions
         events
+        events=
         has_cookbook_file_in_cookbook?
         has_template_in_cookbook?
         load
@@ -623,13 +655,20 @@ class Chef
         loaded_recipes_hash
         logger
         node
+        node=
         open_stream
         reboot_info
         reboot_info=
         reboot_requested?
         request_reboot
         resolve_attribute
+        rest
+        rest=
+        rest_clean
+        rest_clean=
         unreachable_cookbook?
+        transport
+        transport_connection
       }
 
       def initialize(parent_run_context)
@@ -642,8 +681,6 @@ class Chef
       end
 
       CHILD_STATE = %w{
-        audits
-        audits=
         create_child
         add_delayed_action
         delayed_actions

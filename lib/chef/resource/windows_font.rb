@@ -15,12 +15,12 @@
 # limitations under the License.
 #
 
-require "chef/resource"
+require_relative "../resource"
 
 class Chef
   class Resource
     class WindowsFont < Chef::Resource
-      require "chef/util/path_helper"
+      require_relative "../util/path_helper"
 
       resource_name :windows_font
       provides(:windows_font) { true }
@@ -29,7 +29,7 @@ class Chef
       introduced "14.0"
 
       property :font_name, String,
-               description: "The name of the font file to install, if it differs from the resource name.",
+               description: "An optional property to set the name of the font to install if it differs from the resource block's name.",
                name_property: true
 
       property :source, String,
@@ -108,7 +108,7 @@ class Chef
         # @return [String] path to the font
         def source_uri
           begin
-            require "uri"
+            require "uri" unless defined?(URI)
             if remote_file_schema?(URI.parse(new_resource.source).scheme)
               logger.trace("source property starts with ftp/http. Using source property unmodified")
               return new_resource.source
